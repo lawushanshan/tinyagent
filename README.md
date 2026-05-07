@@ -1,10 +1,10 @@
 # TinyApp — 本地 LLM Workflow 平台
 
-基于本地模型驱动的 Agent/Workflow 平台，通过结构化工作流模板让边缘 LLM 稳定完成翻译、文档编写、邮件撰写等任务。支持 Ollama 和 llama.cpp 两种推理后端，可按步骤分配不同模型角色。
+基于本地模型驱动的 Agent/Workflow 平台，通过结构化工作流模板让边缘 LLM 稳定完成翻译、文档编写、邮件撰写等任务。使用 llama.cpp 提供推理服务，支持按步骤分配不同模型角色。
 
 ## 特性
 
-- **本地运行** — 数据不出本机，支持 Ollama 和 llama.cpp 两种推理后端
+- **本地运行** — 数据不出本机，基于 llama.cpp 推理
 - **多模型协作** — 按任务步骤分配不同模型角色（翻译专用 / 快速执行 / 深度思考）
 - **Workflow 模板** — 将复杂任务拆分为结构化步骤，引导边缘模型稳定输出
 - **三层可靠性栈** — 约束解码 + Pydantic 验证 + 错误反馈重试，确保输出质量
@@ -15,24 +15,14 @@
 
 ### 1. 准备推理后端
 
-支持 **Ollama** 或 **llama.cpp**，任选其一（也可混合使用）：
-
-**方式 A：Ollama**
+使用 **llama.cpp** 的 `llama-server` 提供 OpenAI 兼容 API：
 
 ```bash
-# 安装：前往 ollama.com 下载
-ollama serve
-ollama pull qwen2.5:7b
-```
-
-**方式 B：llama.cpp**
-
-```bash
-# 编译安装后，启动 OpenAI 兼容 API 服务
+# 编译安装 llama.cpp 后，启动模型服务
 ./llama-server -m model.gguf --port 8080
 ```
 
-两种后端均通过 OpenAI 兼容协议通信，在 `config.yaml` 中配置 `base_url` 即可切换。
+可在不同端口部署多个模型，在 `config.yaml` 中按角色配置。
 
 ### 2. 创建虚拟环境并安装依赖
 
@@ -103,7 +93,7 @@ tinyapp/
 ├── requirements.txt         # Python 依赖
 ├── main.py                  # CLI 入口
 ├── core/
-│   ├── llm.py               # LLM 客户端（OpenAI 兼容协议，支持 Ollama/llama.cpp）
+│   ├── llm.py               # LLM 客户端（OpenAI 兼容协议，连接 llama.cpp）
 │   ├── reliable.py          # 三层可靠性栈
 │   ├── workflow.py          # Workflow 引擎
 │   ├── tools.py             # 工具注册系统
@@ -130,7 +120,7 @@ tinyapp/
 ```
 LLM 输出
   ↓
-第 1 层：约束解码（Ollama format / llama.cpp grammar，token 层面保证 JSON 合法）
+第 1 层：约束解码（llama.cpp grammar，token 层面保证 JSON 合法）
   ↓
 第 2 层：Pydantic 模型验证（字段类型、值范围语义检查）
   ↓ 失败
@@ -176,7 +166,7 @@ llm:
 
 | 配置项 | 说明 |
 |--------|------|
-| `llm.<role>.base_url` | 推理后端 API 地址（Ollama 或 llama.cpp 均可） |
+| `llm.<role>.base_url` | llama-server API 地址 |
 | `llm.<role>.model` | 模型名称 |
 | `llm.<role>.timeout` | 请求超时（秒），默认 `120` |
 | `llm.<role>.no_think` | 禁用思考模式（Qwen3.5 等支持 `/no_think` 的模型） |
@@ -189,8 +179,7 @@ llm:
 
 | 项目/理念 | 借鉴内容 |
 |-----------|---------|
-| [Ollama Structured Outputs](https://docs.ollama.com/capabilities/structured-outputs) | `format` 约束解码 |
-| [llama.cpp](https://github.com/ggerganov/llama.cpp) | OpenAI 兼容 API 服务 |
+| [llama.cpp](https://github.com/ggerganov/llama.cpp) | OpenAI 兼容 API 服务 + grammar 约束解码 |
 | [instructor](https://github.com/567-labs/instructor) | 验证失败错误反馈重试 |
 | [pydantic-ai](https://github.com/pydantic/pydantic-ai) | Pydantic 模型定义输出 Schema |
 | [LangGraph](https://docs.langchain.com/oss/python/langgraph/graph-api) | StateGraph 状态传递 + Checkpoint |
