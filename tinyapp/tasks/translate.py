@@ -1,0 +1,87 @@
+# tasks/translate.py — 翻译任务（翻译→校对）
+#
+# 模型分配：translator(HY-MT1.5 翻译专用) 执行翻译，reviewer(深度思考) 做校对评分
+# 去掉分析步骤：1.8B 模型多字段结构化输出不稳定，翻译专用模型应专注翻译本身
+
+from pydantic import BaseModel, Field
+
+from .base import WorkflowTask, StepDef
+
+
+class TranslationOutput(BaseModel):
+    translated_text: str = Field(description="翻译结果")
+
+
+class ReviewOutput(BaseModel):
+    final_text: str = Field(description="最终翻译")
+    quality_score: int = Field(description="质量评分1-5", ge=1, le=5)
+    corrections: list[str] = Field(description="修改说明，没有则为空")
+    issues: list[str] = Field(description="发现的问题，没有则为空")
+
+
+TRANSLATE_TASK = WorkflowTask()
+TRANSLATE_TASK.name = "翻译"
+TRANSLATE_TASK.description = "多步骤翻译：翻译 → 校对"
+
+TRANSLATE_TASK.steps = [
+    StepDef(
+        name="翻译",
+        description="执行翻译",
+        system_prompt="""你是专业翻译。将文本翻译为目标语言，保持语气风格。直接输出JSON。
+示例：{"translated_text":"翻译结果"}""",
+        output_model=TranslationOutput,
+        model_role="translator",
+    ),
+    StepDef(
+        name="校对",
+        description="校对评分 [深度思考]",
+        system_prompt="""你是资深翻译审校专家。仔细审查翻译质量，逐项检查：
+1. 是否有漏译、误译
+2. 语句是否通顺自然
+3. 术语是否准确一致
+4. 语气风格是否与原文匹配
+
+给出最终定稿、质量评分和详细审查意见。直接输出JSON。
+示例：{"final_text":"最终翻译","quality_score":5,"corrections":[],"issues":[]}""",
+        output_model=ReviewOutput,
+        model_role="reviewer",
+    ),
+]
+
+
+def collect_input() -> str:
+    text = input("\n请输入要翻译的文本: ").strip()
+    target = input("目标语言（默认：中文）: ").strip() or "中文"
+    return f"请将以下文本翻译为{target}：\n\n{text}"
+
+
+TRANSLATE_TASK.collect_input = collect_input
+
+
+def format_result(result) -> str:
+    if not result.success:
+        return f"[错误] {result.error}"
+
+    review = result.step_outputs.get("校对", {})
+    final = review.get("final_text", "")
+    score = review.get("quality_score", "?")
+    corrections = review.get("corrections", [])
+    issues = review.get("issues", [])
+
+    output = f"\n{'='*50}\n  翻译结果\n{'='*50}\n\n{final}\n"
+
+    if issues:
+        output += f"\n发现问题：\n"
+        for issue in issues:
+            output += f"  ! {issue}\n"
+
+    if corrections:
+        output += f"\n校对修改：\n"
+        for c in corrections:
+            output += f"  - {c}\n"
+
+    output += f"\n质量评分：{'★' * score}{'☆' * (5 - score)} ({score}/5)\n{'='*50}"
+    return output
+
+
+TRANSLATE_TASK.format_result = format_result
