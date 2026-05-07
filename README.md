@@ -1,10 +1,11 @@
 # TinyApp — 本地 LLM Workflow 平台
 
-基于 Ollama 本地模型驱动的 Agent/Workflow 平台，通过结构化工作流模板让边缘 LLM 稳定完成翻译、文档编写、邮件撰写等任务。
+基于本地模型驱动的 Agent/Workflow 平台，通过结构化工作流模板让边缘 LLM 稳定完成翻译、文档编写、邮件撰写等任务。支持 Ollama 和 llama.cpp 两种推理后端，可按步骤分配不同模型角色。
 
 ## 特性
 
-- **本地运行** — 数据不出本机，通过 Ollama 连接本地模型
+- **本地运行** — 数据不出本机，支持 Ollama 和 llama.cpp 两种推理后端
+- **多模型协作** — 按任务步骤分配不同模型角色（翻译专用 / 快速执行 / 深度思考）
 - **Workflow 模板** — 将复杂任务拆分为结构化步骤，引导边缘模型稳定输出
 - **三层可靠性栈** — 约束解码 + Pydantic 验证 + 错误反馈重试，确保输出质量
 - **自动任务发现** — 在 `tasks/` 下新建文件即可扩展新任务
@@ -12,16 +13,26 @@
 
 ## 快速开始
 
-### 1. 安装 Ollama
+### 1. 准备推理后端
 
-前往 [ollama.com](https://ollama.com) 下载安装，然后启动并拉取模型：
+支持 **Ollama** 或 **llama.cpp**，任选其一（也可混合使用）：
+
+**方式 A：Ollama**
 
 ```bash
+# 安装：前往 ollama.com 下载
 ollama serve
 ollama pull qwen2.5:7b
 ```
 
-> 推荐模型：`qwen2.5:7b`（均衡）、`qwen2.5:32b`（质量更高，需 24GB+ 显存）、`llama3.1:8b`
+**方式 B：llama.cpp**
+
+```bash
+# 编译安装后，启动 OpenAI 兼容 API 服务
+./llama-server -m model.gguf --port 8080
+```
+
+两种后端均通过 OpenAI 兼容协议通信，在 `config.yaml` 中配置 `base_url` 即可切换。
 
 ### 2. 创建虚拟环境并安装依赖
 
@@ -92,7 +103,7 @@ tinyapp/
 ├── requirements.txt         # Python 依赖
 ├── main.py                  # CLI 入口
 ├── core/
-│   ├── llm.py               # Ollama 客户端（OpenAI 兼容协议）
+│   ├── llm.py               # LLM 客户端（OpenAI 兼容协议，支持 Ollama/llama.cpp）
 │   ├── reliable.py          # 三层可靠性栈
 │   ├── workflow.py          # Workflow 引擎
 │   ├── tools.py             # 工具注册系统
@@ -119,7 +130,7 @@ tinyapp/
 ```
 LLM 输出
   ↓
-第 1 层：Ollama format 约束解码（token 层面保证 JSON 合法）
+第 1 层：约束解码（Ollama format / llama.cpp grammar，token 层面保证 JSON 合法）
   ↓
 第 2 层：Pydantic 模型验证（字段类型、值范围语义检查）
   ↓ 失败
@@ -147,23 +158,39 @@ LLM 输出
 
 ## 配置说明
 
-编辑 `config.yaml`：
+编辑 `config.yaml`。系统支持多模型角色，每个角色可独立配置推理后端和模型：
 
-| 配置项 | 说明 | 默认值 |
-|--------|------|--------|
-| `llm.base_url` | Ollama API 地址 | `http://localhost:11434/v1` |
-| `llm.model` | 使用的模型 | `qwen2.5:7b` |
-| `llm.timeout` | 请求超时（秒） | `120` |
-| `reliability.max_retries` | 验证失败重试次数 | `3` |
-| `workflow.checkpoint_dir` | Checkpoint 保存目录 | `data/checkpoints` |
-| `agent.max_turns` | 对话模式最大循环轮数 | `15` |
-| `memory.file` | 记忆存储文件 | `data/memory.json` |
+```yaml
+llm:
+  translator:                    # 翻译专用模型（轻量快速）
+    base_url: "http://127.0.0.1:8082/v1"
+    model: "HY-MT1.5-1.8B-Q4_K_M"
+  executor:                      # 执行模型（快速，非思考）
+    base_url: "http://127.0.0.1:8081/v1"
+    model: "Qwen3.5-4B-IQ4_XS"
+    no_think: true
+  reviewer:                      # 评分模型（慢，带思考）
+    base_url: "http://127.0.0.1:8080/v1"
+    model: "gemma-4-E2B-it"
+```
+
+| 配置项 | 说明 |
+|--------|------|
+| `llm.<role>.base_url` | 推理后端 API 地址（Ollama 或 llama.cpp 均可） |
+| `llm.<role>.model` | 模型名称 |
+| `llm.<role>.timeout` | 请求超时（秒），默认 `120` |
+| `llm.<role>.no_think` | 禁用思考模式（Qwen3.5 等支持 `/no_think` 的模型） |
+| `reliability.max_retries` | 验证失败重试次数，默认 `5` |
+| `workflow.checkpoint_dir` | Checkpoint 保存目录 |
+| `agent.max_turns` | 对话模式最大循环轮数，默认 `15` |
+| `memory.file` | 记忆存储文件路径 |
 
 ## 参考与借鉴
 
 | 项目/理念 | 借鉴内容 |
 |-----------|---------|
 | [Ollama Structured Outputs](https://docs.ollama.com/capabilities/structured-outputs) | `format` 约束解码 |
+| [llama.cpp](https://github.com/ggerganov/llama.cpp) | OpenAI 兼容 API 服务 |
 | [instructor](https://github.com/567-labs/instructor) | 验证失败错误反馈重试 |
 | [pydantic-ai](https://github.com/pydantic/pydantic-ai) | Pydantic 模型定义输出 Schema |
 | [LangGraph](https://docs.langchain.com/oss/python/langgraph/graph-api) | StateGraph 状态传递 + Checkpoint |
