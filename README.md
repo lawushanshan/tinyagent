@@ -23,16 +23,19 @@ ollama pull qwen2.5:7b
 
 > 推荐模型：`qwen2.5:7b`（均衡）、`qwen2.5:32b`（质量更高，需 24GB+ 显存）、`llama3.1:8b`
 
-### 2. 安装依赖
+### 2. 创建虚拟环境并安装依赖
 
 ```bash
-pip install openai pydantic pyyaml
+cd tinyapp
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
 ### 3. 启动
 
 ```bash
-cd tinyapp
+source venv/bin/activate
 python main.py
 ```
 
@@ -86,6 +89,7 @@ python main.py
 ```
 tinyapp/
 ├── config.yaml              # 配置文件
+├── requirements.txt         # Python 依赖
 ├── main.py                  # CLI 入口
 ├── core/
 │   ├── llm.py               # Ollama 客户端（OpenAI 兼容协议）
