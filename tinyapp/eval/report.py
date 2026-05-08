@@ -102,3 +102,60 @@ def save_report(report: EvalReport, output_dir: str = None) -> str:
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(report.model_dump(), f, ensure_ascii=False, indent=2)
     return filepath
+
+
+def save_markdown_report(report: EvalReport, output_dir: str = None) -> str:
+    """保存 Markdown 格式报告，返回文件路径"""
+    if output_dir is None:
+        output_dir = os.path.join(os.path.dirname(__file__), "..", "data", "eval_results")
+    os.makedirs(output_dir, exist_ok=True)
+    filename = f"eval_{report.run_id}.md"
+    filepath = os.path.join(output_dir, filename)
+
+    label = report.label or report.run_id
+    lines = [
+        f"# 评测报告 — {label}",
+        f"**时间：** {report.timestamp}",
+        "",
+        "## 汇总",
+        "",
+        "| 总用例 | 成功 | 成功率 | 平均延迟 | 平均质量 | 总重试 | 平均重试/步 |",
+        f"|--------|------|--------|----------|----------|--------|-------------|",
+        f"| {report.total_cases} | {report.success_count} | {report.success_rate:.1%} | {report.avg_total_latency:.1f}s | {report.avg_quality_score:.1f}/5 | {report.total_retries} | {report.avg_retries_per_step:.2f} |",
+        "",
+        "## 每步统计",
+        "",
+        "| 步骤 | 延迟 | 尝试次数 | 成功率 |",
+        "|------|------|----------|--------|",
+    ]
+
+    for name, stats in report.per_step_stats.items():
+        lines.append(f"| {name} | {stats['avg_latency']:.1f}s | {stats['avg_attempts']:.1f} | {stats['success_rate']:.0%} |")
+
+    lines.extend([
+        "",
+        "## 逐条结果",
+        "",
+        "| 状态 | 用例ID | 描述 | 延迟 | 质量 |",
+        "|------|--------|------|------|------|",
+    ])
+
+    for r in report.results:
+        status = "PASS" if r.success else "FAIL"
+        score = ""
+        if r.success and r.steps:
+            for sm in reversed(r.steps):
+                if sm.quality_score is not None:
+                    score = f"{sm.quality_score}/5"
+                    break
+        desc = r.description[:20]
+        error_line = ""
+        if r.error:
+            error_line = f"\n  - 错误：{r.error[:80]}"
+        lines.append(f"| {status} | {r.case_id} | {desc} | {r.total_elapsed:.1f}s | {score} |{error_line}")
+
+    lines.append("")
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    return filepath
