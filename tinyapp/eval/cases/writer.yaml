@@ -1,0 +1,20 @@
+# eval/cases/writer.yaml — 编写任务测试用例
+
+task: 编写
+
+cases:
+  - id: email-thanks-01
+    input: "请写一封邮件，读者是客户。内容要求：感谢对方过去一年的合作，并确认下周三的年度回顾会议时间。"
+    description: "感谢邮件"
+
+  - id: report-summary-02
+    input: "请写一篇报告，读者是领导。内容要求：总结 Q1 季度产品上线情况，包含用户增长数据和主要功能进展。"
+    description: "季度总结报告"
+
+  - id: notice-03
+    input: "请写一篇通知，读者是全体同事。内容要求：公司将于下月搬迁至新办公地址，公布搬迁日期和注意事项。"
+    description: "搬迁通知"
+
+  - id: email-apology-04
+    input: "请写一封邮件，读者是客户。内容要求：因系统故障导致服务中断，向客户致歉并说明已恢复正常以及补偿方案。"
+    description: "致歉邮件"

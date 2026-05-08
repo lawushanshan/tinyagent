@@ -13,6 +13,17 @@ from typing import Type
 from .llm import LLMClient
 
 
+_call_metrics_log: list[dict] = []
+
+
+def get_call_metrics_log() -> list[dict]:
+    return _call_metrics_log
+
+
+def reset_call_metrics_log():
+    _call_metrics_log.clear()
+
+
 def reliable_call(
     llm: LLMClient,
     messages: list[dict],
@@ -30,6 +41,8 @@ def reliable_call(
 
     last_error = None
     total_start = time.time()
+    call_metrics = {"attempts": 0, "attempts_detail": [], "total_elapsed": 0, "success": False, "final_error": None}
+
     for attempt in range(max_retries):
         t0 = time.time()
         response = llm.chat(
@@ -39,9 +52,11 @@ def reliable_call(
         )
         elapsed = time.time() - t0
         content = response["content"]
+        call_metrics["attempts"] = attempt + 1
 
         if not content.strip():
             last_error = "模型返回空内容"
+            call_metrics["attempts_detail"].append({"attempt": attempt + 1, "elapsed": round(elapsed, 2), "success": False, "error": last_error})
             print(f" ({elapsed:.1f}s, 空)", end="", flush=True)
             if attempt < max_retries - 1:
                 _append_retry_feedback(messages, content, last_error)
@@ -53,6 +68,7 @@ def reliable_call(
 
         if not content.strip():
             last_error = "剥离思考内容后为空"
+            call_metrics["attempts_detail"].append({"attempt": attempt + 1, "elapsed": round(elapsed, 2), "success": False, "error": last_error})
             print(f" ({elapsed:.1f}s, 仅有思考)", end="", flush=True)
             if attempt < max_retries - 1:
                 _append_retry_feedback(messages, content, last_error)
@@ -64,15 +80,23 @@ def reliable_call(
             total_elapsed = time.time() - total_start
             retry_info = f", 重试 {attempt} 次" if attempt > 0 else ""
             print(f" ({elapsed:.1f}s{retry_info})", end="", flush=True)
+            call_metrics["attempts_detail"].append({"attempt": attempt + 1, "elapsed": round(elapsed, 2), "success": True, "error": None})
+            call_metrics["success"] = True
+            call_metrics["total_elapsed"] = round(total_elapsed, 2)
+            _call_metrics_log.append(call_metrics)
             return result
         except (ValidationError, json.JSONDecodeError) as e:
             last_error = str(e)
+            call_metrics["attempts_detail"].append({"attempt": attempt + 1, "elapsed": round(elapsed, 2), "success": False, "error": last_error[:200]})
             print(f" ({elapsed:.1f}s, 重试)", end="", flush=True)
             if attempt < max_retries - 1:
                 _append_retry_feedback(messages, content, last_error)
                 time.sleep(1 * (attempt + 1))
 
     total_elapsed = time.time() - total_start
+    call_metrics["total_elapsed"] = round(total_elapsed, 2)
+    call_metrics["final_error"] = last_error
+    _call_metrics_log.append(call_metrics)
     raise RuntimeError(
         f"经过 {max_retries} 次尝试仍未能生成有效输出（{total_elapsed:.1f}s）。最后错误：{last_error}"
     )

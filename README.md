@@ -175,6 +175,55 @@ llm:
 | `agent.max_turns` | 对话模式最大循环轮数，默认 `15` |
 | `memory.file` | 记忆存储文件路径 |
 
+## 评测工具
+
+内置评测工具，对 workflow 任务进行批量测试，量化评估稳定性与质量。
+
+### 使用方式
+
+```bash
+cd tinyapp
+
+# 运行全部测试用例
+python eval_run.py
+
+# 指定任务 + 标签（用于对比）
+python eval_run.py --task 翻译 --label "baseline"
+python eval_run.py --task 翻译 --label "prompt-v2"
+
+# 快速验证（只跑前 2 条）
+python eval_run.py -n 2 -l "quick-test"
+```
+
+### 评估指标
+
+| 指标 | 说明 |
+|------|------|
+| 成功率 | 一次跑通无重试的比例 |
+| 平均质量评分 | reviewer 模型给出的质量分（1-5） |
+| 总重试次数 | 所有步骤重试次数之和 |
+| 平均重试/步 | 每步平均重试次数 |
+| 每步延迟 | 各步骤平均耗时 |
+| 每步成功率 | 各步骤独立成功率 |
+
+### 测试用例
+
+测试用例为 YAML 文件，存放在 `eval/cases/` 目录下，按任务分文件。添加新用例只需在对应 YAML 中追加条目：
+
+```yaml
+# eval/cases/translate.yaml
+task: 翻译
+cases:
+  - id: en-zh-simple-01
+    input: "请将以下文本翻译为中文：\n\nThe quick brown fox jumps over the lazy dog."
+    description: "简单英文→中文"
+```
+
+### 报告输出
+
+- **控制台**：汇总统计 + 逐条结果
+- **JSON 文件**：保存到 `data/eval_results/`，同 schema 可直接对比两次运行的差异
+
 ## 参考与借鉴
 
 | 项目/理念 | 借鉴内容 |

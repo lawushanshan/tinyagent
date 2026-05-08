@@ -1,0 +1,28 @@
+# eval/cases/translate.yaml — 翻译任务测试用例
+
+task: 翻译
+
+cases:
+  - id: en-zh-simple-01
+    input: "请将以下文本翻译为中文：\n\nThe quick brown fox jumps over the lazy dog."
+    description: "简单英文→中文"
+
+  - id: en-zh-tech-02
+    input: "请将以下文本翻译为中文：\n\nThe API endpoint returns a JSON response with pagination metadata."
+    description: "技术术语翻译"
+
+  - id: zh-en-01
+    input: "请将以下文本翻译为英文：\n\n人工智能正在改变各行各业的工作方式。"
+    description: "中文→英文翻译"
+
+  - id: en-zh-long-02
+    input: "请将以下文本翻译为中文：\n\nClimate change is one of the most pressing challenges of our time. Rising sea levels threaten coastal communities, while extreme weather events become more frequent and severe."
+    description: "较长段落翻译"
+
+  - id: en-zh-formal-03
+    input: "请将以下文本翻译为中文：\n\nWe sincerely appreciate your continued partnership and look forward to exploring new opportunities for collaboration in the coming year."
+    description: "正式商务翻译"
+
+  - id: zh-en-daily-04
+    input: "请将以下文本翻译为英文：\n\n今天天气不错，我们下午去公园散步吧，记得带瓶水。"
+    description: "日常中文→英文"
