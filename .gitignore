@@ -2,8 +2,8 @@
 __pycache__/
 *.pyc
 *.egg-info/
-data/checkpoints/
-data/eval_results/
+tinyapp/data/checkpoints/
+tinyapp/data/eval_results/
 .claude/
 venv/
 .env
