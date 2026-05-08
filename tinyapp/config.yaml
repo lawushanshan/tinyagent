@@ -11,10 +11,10 @@ llm:
   # 执行模型（快速，非思考）— 用于分析、起草等生成步骤
   executor:
     base_url: "http://127.0.0.1:8081/v1"
-    model: "Qwen3.5-4B-IQ4_XS"
-    timeout: 120
+    model: "qwen2.5-3b-instruct-q4_k_m"
+    timeout: 300
     temperature: 0
-    no_think: true          # 禁用思考模式（Qwen3.5 等支持 /no_think 的模型）
+    # no_think: true          # 禁用思考模式（Qwen3.5 等支持 /no_think 的模型）
   # 评分模型（慢，带思考）— 用于校对、评分、审查等需要深度推理的步骤
   reviewer:
     base_url: "http://127.0.0.1:8080/v1"
