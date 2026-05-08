@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TinyApp</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- ═══ 首页 ═══ -->
+<div id="view-home" class="view">
+  <h1 class="logo">TinyApp</h1>
+  <p class="subtitle">本地 AI 助手 — 数据不出本机</p>
+  <div id="status-bar" class="status-bar"></div>
+  <div id="task-cards" class="cards"></div>
+</div>
+
+<!-- ═══ Workflow 执行 ═══ -->
+<div id="view-workflow" class="view hidden">
+  <button class="btn-back" onclick="showHome()">&#8592; 返回</button>
+  <h2 id="wf-title"></h2>
+
+  <!-- 翻译输入 -->
+  <div id="form-translate" class="form-group hidden">
+    <textarea id="input-text" placeholder="请输入要翻译的文本..." rows="5"></textarea>
+    <div class="form-row">
+      <label>目标语言</label>
+      <select id="input-lang">
+        <option value="中文">中文</option>
+        <option value="英语">英语</option>
+        <option value="日语">日语</option>
+        <option value="韩语">韩语</option>
+        <option value="法语">法语</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 编写输入 -->
+  <div id="form-writer" class="form-group hidden">
+    <div class="form-row">
+      <label>文档类型</label>
+      <select id="input-doctype">
+        <option value="邮件">邮件</option>
+        <option value="报告">报告</option>
+        <option value="总结">总结</option>
+        <option value="通知">通知</option>
+        <option value="方案">方案</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>目标读者</label>
+      <input id="input-audience" type="text" value="通用" placeholder="如：客户、领导、同事">
+    </div>
+    <textarea id="input-desc" placeholder="请描述你要写的内容..." rows="4"></textarea>
+  </div>
+
+  <button id="btn-run" class="btn-primary" onclick="runWorkflow()">开始</button>
+
+  <!-- 步骤进度 -->
+  <div id="wf-progress" class="progress-area hidden">
+    <div id="wf-steps"></div>
+  </div>
+
+  <!-- 结果 -->
+  <div id="wf-result" class="result-area hidden"></div>
+</div>
+
+<!-- ═══ 自由对话 ═══ -->
+<div id="view-chat" class="view hidden">
+  <div class="chat-header">
+    <button class="btn-back" onclick="showHome()">&#8592; 返回</button>
+    <h2>AI 对话</h2>
+    <button class="btn-small" onclick="resetChat()">新对话</button>
+  </div>
+  <div id="chat-messages" class="chat-messages"></div>
+  <div class="chat-input-area">
+    <textarea id="chat-input" placeholder="输入消息... (Enter 发送, Shift+Enter 换行)" rows="2"></textarea>
+    <button class="btn-send" onclick="sendChat()">发送</button>
+  </div>
+</div>
+
+<script>
+// ── 状态 ──
+let currentTask = null;
+let tasks = [];
+let running = false;
+
+// ── 初始化 ──
+async function init() {
+  const [tasksRes, statusRes] = await Promise.all([
+    fetch('/api/tasks').then(r => r.json()),
+    fetch('/api/status').then(r => r.json()),
+  ]);
+  tasks = tasksRes;
+  renderStatus(statusRes);
+  renderCards(tasksRes);
+}
+
+function renderStatus(models) {
+  const bar = document.getElementById('status-bar');
+  bar.innerHTML = Object.values(models).map(m =>
+    `<span class="status-dot ${m.connected ? 'on' : 'off'}"></span>${m.label}`
+  ).join(' &nbsp; ');
+}
+
+function renderCards(tasks) {
+  const el = document.getElementById('task-cards');
+  const icons = { '翻译': '&#127760;', '编写': '&#9997;', '对话': '&#128172;' };
+  el.innerHTML = tasks.map(t => `
+    <div class="card" onclick="selectTask('${t.name}')">
+      <div class="card-icon">${icons[t.name] || '&#9881;'}</div>
+      <div class="card-name">${t.name}</div>
+      <div class="card-desc">${t.description}</div>
+    </div>
+  `).join('');
+}
+
+// ── 视图切换 ──
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function showHome() {
+  currentTask = null;
+  showView('view-home');
+}
+
+// ── 选择任务 ──
+function selectTask(name) {
+  currentTask = tasks.find(t => t.name === name);
+  if (!currentTask) return;
+
+  if (currentTask.type === 'chat') {
+    showView('view-chat');
+    return;
+  }
+
+  document.getElementById('wf-title').textContent = currentTask.description;
+  document.getElementById('form-translate').classList.toggle('hidden', name !== '翻译');
+  document.getElementById('form-writer').classList.toggle('hidden', name !== '编写');
+  document.getElementById('wf-progress').classList.add('hidden');
+  document.getElementById('wf-result').classList.add('hidden');
+  document.getElementById('btn-run').classList.remove('hidden');
+  showView('view-workflow');
+}
+
+// ── 执行 Workflow ──
+function buildInput() {
+  if (currentTask.name === '翻译') {
+    const text = document.getElementById('input-text').value.trim();
+    const lang = document.getElementById('input-lang').value;
+    return `请将以下文本翻译为${lang}：\n\n${text}`;
+  }
+  if (currentTask.name === '编写') {
+    const doctype = document.getElementById('input-doctype').value;
+    const audience = document.getElementById('input-audience').value || '通用';
+    const desc = document.getElementById('input-desc').value.trim();
+    return `请写一篇${doctype}，读者是${audience}。内容要求：${desc}`;
+  }
+  return '';
+}
+
+async function runWorkflow() {
+  const user_input = buildInput();
+  if (!user_input) { alert('请填写内容'); return; }
+  if (running) return;
+  running = true;
+
+  document.getElementById('btn-run').classList.add('hidden');
+  document.getElementById('wf-progress').classList.remove('hidden');
+  document.getElementById('wf-result').classList.add('hidden');
+
+  const stepsEl = document.getElementById('wf-steps');
+  stepsEl.innerHTML = (currentTask.step_names || []).map((n, i) =>
+    `<div class="step-item" id="step-${i}"><span class="step-icon">&#9675;</span> ${n}<span class="step-time" id="time-${i}"></span></div>`
+  ).join('');
+
+  try {
+    const resp = await fetch('/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_name: currentTask.name, user_input }),
+    });
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const evt = JSON.parse(line.slice(6));
+          handleEvent(evt, stepsEl);
+        } catch {}
+      }
+    }
+  } catch (e) {
+    document.getElementById('wf-result').classList.remove('hidden');
+    document.getElementById('wf-result').innerHTML = `<div class="error">执行失败: ${e.message}</div>`;
+  }
+  running = false;
+}
+
+function handleEvent(evt, stepsEl) {
+  if (evt.type === 'step') {
+    const idx = evt.step_num - 1;
+    const el = document.getElementById('step-' + idx);
+    if (!el) return;
+    if (evt.status === 'start') {
+      el.classList.add('active');
+      el.querySelector('.step-icon').innerHTML = '&#9679;';
+      document.getElementById('time-' + idx).textContent = '...';
+    } else if (evt.status === 'done') {
+      el.classList.remove('active');
+      el.classList.add('done');
+      el.querySelector('.step-icon').innerHTML = '&#10003;';
+      document.getElementById('time-' + idx).textContent = evt.elapsed != null ? evt.elapsed + 's' : '';
+    } else if (evt.status === 'error') {
+      el.classList.remove('active');
+      el.classList.add('error');
+      el.querySelector('.step-icon').innerHTML = '&#10007;';
+      document.getElementById('time-' + idx).textContent = evt.elapsed != null ? evt.elapsed + 's' : '';
+    }
+  } else if (evt.type === 'result') {
+    showResult(evt);
+  } else if (evt.type === 'error') {
+    document.getElementById('wf-result').classList.remove('hidden');
+    document.getElementById('wf-result').innerHTML = `<div class="error">错误: ${evt.message}</div>`;
+  }
+}
+
+function showResult(evt) {
+  const el = document.getElementById('wf-result');
+  el.classList.remove('hidden');
+
+  if (!evt.success) {
+    el.innerHTML = `<div class="error">执行失败: ${evt.error}</div>`;
+    return;
+  }
+
+  const out = evt.final_output || {};
+  const steps = evt.step_outputs || {};
+
+  // 尝试提取主要文本
+  const mainText = out.final_text || out.final_content || out.translated_text || out.content || '';
+  const score = out.quality_score;
+
+  let html = '<div class="result-box">';
+  if (mainText) {
+    html += `<div class="result-header"><button class="btn-copy" onclick="copyText(this, '${btoa(unescape(encodeURIComponent(mainText)))}')">复制内容</button></div>`;
+    html += `<div class="result-text">${escapeHtml(mainText)}</div>`;
+  }
+
+  if (score) {
+    const stars = '★'.repeat(score) + '☆'.repeat(5 - score);
+    html += `<div class="result-score">质量评分：${stars} (${score}/5)</div>`;
+  }
+
+  // 校对信息
+  const review = steps['校对'] || steps['润色'] || {};
+  const corrections = review.corrections || [];
+  const improvements = review.improvements || [];
+  const issues = review.issues || [];
+
+  if (corrections.length) {
+    html += '<div class="result-detail"><b>修改说明：</b><ul>' +
+      corrections.map(c => `<li>${escapeHtml(c)}</li>`).join('') + '</ul></div>';
+  }
+  if (improvements.length) {
+    html += '<div class="result-detail"><b>润色改进：</b><ul>' +
+      improvements.map(c => `<li>${escapeHtml(c)}</li>`).join('') + '</ul></div>';
+  }
+  if (issues.length) {
+    html += '<div class="result-detail"><b>发现问题：</b><ul>' +
+      issues.map(c => `<li>${escapeHtml(c)}</li>`).join('') + '</ul></div>';
+  }
+
+  html += '<div class="result-actions"><button class="btn-retry" onclick="retryTask()">再来一次</button></div>';
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ── 聊天 ──
+const chatInput = document.getElementById('chat-input');
+chatInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChat();
+  }
+});
+
+async function sendChat() {
+  const msg = chatInput.value.trim();
+  if (!msg) return;
+  chatInput.value = '';
+
+  appendChat('user', msg);
+
+  try {
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg }),
+    });
+    const data = await resp.json();
+
+    if (data.error) {
+      appendChat('error', data.error);
+    } else {
+      if (data.tools && data.tools.length) {
+        data.tools.forEach(t => appendChat('tool', `${t.name}(${JSON.stringify(t.args)})`));
+      }
+      appendChat('assistant', data.reply, data.elapsed);
+    }
+  } catch (e) {
+    appendChat('error', '请求失败: ' + e.message);
+  }
+}
+
+function appendChat(role, text, elapsed) {
+  const el = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'chat-bubble ' + role;
+
+  let html = escapeHtml(text);
+  if (elapsed) html += `<span class="chat-elapsed">${elapsed}s</span>`;
+  div.innerHTML = html;
+
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function resetChat() {
+  await fetch('/api/chat/reset', { method: 'POST' });
+  document.getElementById('chat-messages').innerHTML = '';
+}
+
+function retryTask() {
+  document.getElementById('wf-progress').classList.add('hidden');
+  document.getElementById('wf-result').classList.add('hidden');
+  document.getElementById('btn-run').classList.remove('hidden');
+  running = false;
+}
+
+// ── 工具 ──
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function copyText(btn, b64) {
+  const text = decodeURIComponent(escape(atob(b64)));
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '已复制';
+    setTimeout(() => btn.textContent = '复制内容', 1500);
+  });
+}
+
+// ── 启动 ──
+init();
+</script>
+</body>
+</html>

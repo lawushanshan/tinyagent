@@ -9,7 +9,7 @@
 - **Workflow 模板** — 将复杂任务拆分为结构化步骤，引导边缘模型稳定输出
 - **三层可靠性栈** — 约束解码 + Pydantic 验证 + 错误反馈重试，确保输出质量
 - **自动任务发现** — 在 `tasks/` 下新建文件即可扩展新任务
-- **极简依赖** — 仅需 `openai`、`pydantic`、`pyyaml` 三个库
+- **极简依赖** — 仅需 `openai`、`pydantic`、`pyyaml`、`flask` 四个库
 
 ## 快速开始
 
@@ -34,6 +34,17 @@ pip install -r requirements.txt
 ```
 
 ### 3. 启动
+
+**Web GUI（推荐）：**
+
+```bash
+source venv/bin/activate
+python gui.py
+```
+
+启动后自动打开浏览器，访问 `http://localhost:5001`。
+
+**CLI 模式：**
 
 ```bash
 source venv/bin/activate
@@ -92,12 +103,19 @@ tinyapp/
 ├── config.yaml              # 配置文件
 ├── requirements.txt         # Python 依赖
 ├── main.py                  # CLI 入口
+├── gui.py                   # Web GUI 入口（双击启动）
 ├── core/
 │   ├── llm.py               # LLM 客户端（OpenAI 兼容协议，连接 llama.cpp）
 │   ├── reliable.py          # 三层可靠性栈
 │   ├── workflow.py          # Workflow 引擎
 │   ├── tools.py             # 工具注册系统
 │   └── memory.py            # 持久化记忆
+├── web/
+│   ├── app.py               # Flask 应用 + API 路由
+│   ├── templates/
+│   │   └── index.html       # 前端页面
+│   └── static/
+│       └── style.css        # 样式
 ├── tasks/
 │   ├── __init__.py          # 任务自动发现
 │   ├── base.py              # 任务基类

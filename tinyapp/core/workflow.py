@@ -49,6 +49,7 @@ class WorkflowEngine:
         steps: list[dict],
         user_input: str,
         state: dict = None,
+        on_step=None,
     ) -> WorkflowResult:
         if state is None:
             state = {
@@ -66,14 +67,17 @@ class WorkflowEngine:
             model_role = step.get("model_role", "executor")
             state["current_step"] = step_num
 
-            # 显示步骤信息（含模型角色标签）
             role_label = {"translator": "翻译", "executor": "快速", "reviewer": "深度"}.get(model_role, model_role)
-            print(f"\n  [步骤 {step_num}/{total_steps}] {step.get('description', step_name)} [{role_label}]...", end="", flush=True)
+            step_desc = step.get("description", step_name)
+
+            if on_step:
+                on_step(step_num, total_steps, step_name, step_desc, "start", {})
+            else:
+                print(f"\n  [步骤 {step_num}/{total_steps}] {step_desc} [{role_label}]...", end="", flush=True)
 
             self._save_checkpoint(task_name, state)
             messages = self._build_messages(step, state, step_num, total_steps)
 
-            # 按角色选择 LLM
             llm = self.pool.get(model_role)
 
             try:
@@ -87,11 +91,17 @@ class WorkflowEngine:
                 step_outputs[step_name] = step_data
                 state["steps"][step_name] = step_data
 
-                self._print_step_summary(step_name, step_data)
-                print(" ✓")
+                if on_step:
+                    on_step(step_num, total_steps, step_name, step_desc, "done", step_data)
+                else:
+                    self._print_step_summary(step_name, step_data)
+                    print(" ✓")
 
             except Exception as e:
-                print(f" ✗\n  [错误] 步骤 '{step_name}' 失败: {e}")
+                if on_step:
+                    on_step(step_num, total_steps, step_name, step_desc, "error", {"error": str(e)})
+                else:
+                    print(f" ✗\n  [错误] 步骤 '{step_name}' 失败: {e}")
                 return WorkflowResult(
                     final_output=state["steps"],
                     step_outputs=step_outputs,
