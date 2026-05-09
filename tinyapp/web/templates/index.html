@@ -26,13 +26,7 @@
     <textarea id="input-text" placeholder="请输入要翻译的文本..." rows="5"></textarea>
     <div class="form-row">
       <label>目标语言</label>
-      <select id="input-lang">
-        <option value="中文">中文</option>
-        <option value="英语">英语</option>
-        <option value="日语">日语</option>
-        <option value="韩语">韩语</option>
-        <option value="法语">法语</option>
-      </select>
+      <select id="input-lang"></select>
     </div>
   </div>
 
@@ -84,17 +78,21 @@
 // ── 状态 ──
 let currentTask = null;
 let tasks = [];
+let languages = [];
 let running = false;
 
 // ── 初始化 ──
 async function init() {
-  const [tasksRes, statusRes] = await Promise.all([
+  const [tasksRes, statusRes, langRes] = await Promise.all([
     fetch('/api/tasks').then(r => r.json()),
     fetch('/api/status').then(r => r.json()),
+    fetch('/api/languages').then(r => r.json()),
   ]);
   tasks = tasksRes;
+  languages = langRes;
   renderStatus(statusRes);
   renderCards(tasksRes);
+  renderLangOptions();
 }
 
 function renderStatus(models) {
@@ -102,6 +100,13 @@ function renderStatus(models) {
   bar.innerHTML = Object.values(models).map(m =>
     `<span class="status-dot ${m.connected ? 'on' : 'off'}"></span>${m.label}`
   ).join(' &nbsp; ');
+}
+
+function renderLangOptions() {
+  const sel = document.getElementById('input-lang');
+  sel.innerHTML = languages.map(l =>
+    `<option value="${l.code}">${l.name}（${l.code}）</option>`
+  ).join('');
 }
 
 function renderCards(tasks) {
@@ -150,8 +155,10 @@ function selectTask(name) {
 function buildInput() {
   if (currentTask.name === '翻译') {
     const text = document.getElementById('input-text').value.trim();
-    const lang = document.getElementById('input-lang').value;
-    return `请将以下文本翻译为${lang}：\n\n${text}`;
+    const langCode = document.getElementById('input-lang').value;
+    const langOption = languages.find(l => l.code === langCode);
+    const langName = langOption ? langOption.name : langCode;
+    return `请将以下文本翻译为${langName}（${langCode}）：\n\n${text}`;
   }
   if (currentTask.name === '编写') {
     const doctype = document.getElementById('input-doctype').value;

@@ -1,11 +1,11 @@
 # tasks/translate.py — 翻译任务（翻译→校对）
 #
 # 模型分配：translator(HY-MT1.5 翻译专用) 执行翻译，reviewer(深度思考) 做校对评分
-# 去掉分析步骤：1.8B 模型多字段结构化输出不稳定，翻译专用模型应专注翻译本身
 
 from pydantic import BaseModel, Field
 
 from .base import WorkflowTask, StepDef
+from .languages import get_lang_name, get_lang_code, get_lang_options
 
 
 class TranslationOutput(BaseModel):
@@ -27,7 +27,7 @@ TRANSLATE_TASK.steps = [
     StepDef(
         name="翻译",
         description="执行翻译",
-        system_prompt="""你是专业翻译。将文本翻译为目标语言，保持语气风格。直接输出JSON。
+        system_prompt="""你是专业翻译。将用户提供的文本翻译为指定的目标语言，保持原文的语气、风格和格式。直接输出JSON。
 示例：{"translated_text":"翻译结果"}""",
         output_model=TranslationOutput,
         model_role="translator",
@@ -50,9 +50,25 @@ TRANSLATE_TASK.steps = [
 
 
 def collect_input() -> str:
-    text = input("\n请输入要翻译的文本: ").strip()
-    target = input("目标语言（默认：中文）: ").strip() or "中文"
-    return f"请将以下文本翻译为{target}：\n\n{text}"
+    # 显示支持的语言
+    print("\n  支持的语言：")
+    langs = get_lang_options()
+    line = "    "
+    for code, name in langs:
+        entry = f"{name}({code})"
+        if len(line) + len(entry) + 2 > 60:
+            print(line)
+            line = "    "
+        line += entry + "  "
+    if line.strip():
+        print(line)
+    print()
+
+    text = input("  请输入要翻译的文本: ").strip()
+    target_raw = input("  目标语言（code或中文名，默认：中文）: ").strip() or "中文"
+    target_name = get_lang_name(target_raw)
+    target_code = get_lang_code(target_raw)
+    return f"请将以下文本翻译为{target_name}（{target_code}）：\n\n{text}"
 
 
 TRANSLATE_TASK.collect_input = collect_input

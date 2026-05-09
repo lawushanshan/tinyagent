@@ -205,13 +205,32 @@ cd tinyapp
 # 运行全部测试用例
 python eval_run.py
 
-# 指定任务 + 标签（用于对比）
+# 指定任务
+python eval_run.py --task 翻译
+
+# 指定任务 + 标签（用于对比不同 prompt / 模型的效果）
 python eval_run.py --task 翻译 --label "baseline"
 python eval_run.py --task 翻译 --label "prompt-v2"
 
-# 快速验证（只跑前 2 条）
-python eval_run.py -n 2 -l "quick-test"
+# 快速验证（只跑前 N 条）
+python eval_run.py -n 2
+
+# 指定报告输出目录
+python eval_run.py -o ./my_results
+
+# 使用自定义测试用例目录
+python eval_run.py --cases-dir ./my_cases
 ```
+
+### 命令行参数
+
+| 参数 | 缩写 | 说明 |
+|------|------|------|
+| `--label` | `-l` | 运行标签，用于标识和对比不同批次（如 baseline、prompt-v2） |
+| `--task` | `-t` | 指定任务名（翻译、编写），默认运行全部 |
+| `--max-cases` | `-n` | 最大用例数，`0` 表示不限 |
+| `--output` | `-o` | 报告输出目录，默认 `data/eval_results/` |
+| `--cases-dir` | | 测试用例目录，默认 `eval/cases/` |
 
 ### 评估指标
 
@@ -239,8 +258,11 @@ cases:
 
 ### 报告输出
 
-- **控制台**：汇总统计 + 逐条结果
-- **JSON 文件**：保存到 `data/eval_results/`，同 schema 可直接对比两次运行的差异
+评测完成后自动生成三种输出：
+
+- **控制台**：汇总统计 + 逐条结果，即时查看
+- **JSON**：保存到 `data/eval_results/eval_{run_id}.json`，同 schema 可直接对比两次运行差异
+- **Markdown**：保存到 `data/eval_results/eval_{run_id}.md`，包含表格化的汇总和逐条结果
 
 ## 参考与借鉴
 

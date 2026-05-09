@@ -8,3 +8,5 @@ tinyapp/data/eval_results/
 .venv/
 venv/
 .env
+skills-lock.json
+.agents/skills/

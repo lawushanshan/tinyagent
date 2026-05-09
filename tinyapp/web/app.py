@@ -14,6 +14,7 @@ from core.memory import Memory
 from core.tools import get_definitions, execute as tool_execute
 from core.workflow import WorkflowEngine
 from tasks import discover_tasks, get_all_tasks, get_task
+from tasks.languages import get_lang_name, get_lang_code, get_lang_options
 
 
 def create_app():
@@ -64,6 +65,10 @@ def create_app():
                 "connected": ok,
             }
         return jsonify(models)
+
+    @app.route("/api/languages")
+    def api_languages():
+        return jsonify([{"code": code, "name": name} for code, name in get_lang_options()])
 
     # ── Workflow 执行（SSE 流式） ──
 
