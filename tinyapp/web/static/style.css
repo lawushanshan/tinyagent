@@ -118,6 +118,7 @@ body {
   border: 2px solid transparent;
   box-shadow: var(--shadow-sm);
   transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+  position: relative;
 }
 
 .card:hover {
@@ -129,6 +130,27 @@ body {
 .card-icon { font-size: 36px; margin-bottom: 10px; }
 .card-name { font-size: 18px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
 .card-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+.card-fast {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--primary-subtle);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  border: none;
+  line-height: 1.4;
+}
+
+.card-fast:hover {
+  background: var(--primary);
+  color: #fff;
+}
 
 /* ── 按钮 ── */
 

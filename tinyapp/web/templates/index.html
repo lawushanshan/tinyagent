@@ -98,6 +98,7 @@ var tasks = [];
 var languages = [];
 var running = false;
 var lastStatus = {};
+var fastMode = false;
 
 // ── Init ──
 async function init() {
@@ -156,7 +157,12 @@ function renderCards(tasks) {
   var el = document.getElementById('task-cards');
   var icons = { '翻译': '&#127760;', '编写': '&#9997;', '对话': '&#128172;' };
   el.innerHTML = tasks.map(function(task) {
+    var isWorkflow = task.type === 'workflow';
+    var fastBadge = isWorkflow
+      ? '<span class="card-fast" onclick="event.stopPropagation();selectTask(\'' + task.name + '\', true)" title="' + t('fast_label') + '">&#9889;</span>'
+      : '';
     return '<div class="card" role="listitem" tabindex="0" onclick="selectTask(\'' + task.name + '\')" onkeydown="if(event.key===\'Enter\')selectTask(\'' + task.name + '\')">' +
+      fastBadge +
       '<div class="card-icon">' + (icons[task.name] || '&#9881;') + '</div>' +
       '<div class="card-name">' + getTaskName(task.name) + '</div>' +
       '<div class="card-desc">' + getTaskDesc(task.name) + '</div>' +
@@ -176,7 +182,7 @@ function showHome() {
 }
 
 // ── Select task ──
-function selectTask(name) {
+function selectTask(name, fast) {
   currentTask = tasks.find(function(t) { return t.name === name; });
   if (!currentTask) return;
 
@@ -185,7 +191,10 @@ function selectTask(name) {
     return;
   }
 
-  document.getElementById('wf-title').textContent = getTaskDesc(name);
+  fastMode = !!fast;
+  var titleText = getTaskDesc(name);
+  if (fastMode) titleText += ' (' + t('fast_label') + ')';
+  document.getElementById('wf-title').textContent = titleText;
   document.getElementById('form-translate').classList.toggle('hidden', name !== '翻译');
   document.getElementById('form-writer').classList.toggle('hidden', name !== '编写');
   document.getElementById('wf-progress').classList.add('hidden');
@@ -224,6 +233,7 @@ async function runWorkflow() {
 
   var stepsEl = document.getElementById('wf-steps');
   var stepNames = (currentTask.step_names || []);
+  if (fastMode) stepNames = stepNames.slice(0, -1);
   stepsEl.innerHTML = stepNames.map(function(n, i) {
     return '<div class="step-item" id="step-' + i + '"><span class="step-icon">&#9675;</span> ' + getStepName(n) + '<span class="step-time" id="time-' + i + '"></span></div>';
   }).join('');
@@ -232,7 +242,7 @@ async function runWorkflow() {
     var resp = await fetch('/api/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task_name: currentTask.name, user_input: user_input }),
+      body: JSON.stringify({ task_name: currentTask.name, user_input: user_input, fast_mode: fastMode }),
     });
 
     var reader = resp.body.getReader();

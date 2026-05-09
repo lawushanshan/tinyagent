@@ -85,12 +85,15 @@ def create_app():
         data = request.json
         task_name = data.get("task_name", "")
         user_input = data.get("user_input", "")
+        fast_mode = data.get("fast_mode", False)
 
         task = get_task(task_name)
         if not task:
             return jsonify({"error": f"未找到任务: {task_name}"}), 404
 
         steps = [s.to_dict() for s in task.steps]
+        if fast_mode:
+            steps = steps[:-1]
 
         event_queue = queue.Queue()
         step_timers: dict[int, float] = {}
