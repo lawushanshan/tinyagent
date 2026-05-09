@@ -1,29 +1,83 @@
+/* ── Cove Design System ── */
+
+:root {
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --surface-raised: #F5F0E8;
+  --primary: #7B5B3A;
+  --primary-hover: #5E4229;
+  --primary-light: #A68B6B;
+  --primary-subtle: #EDE6DA;
+  --text: #2D2016;
+  --text-secondary: #6B5D4F;
+  --text-muted: #A89E94;
+  --border: #E2D9CD;
+  --border-focus: #7B5B3A;
+  --success: #5B8C5A;
+  --error: #B83B2E;
+  --error-bg: #FBF0EE;
+  --gold: #C9962E;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 3px rgba(45, 32, 22, 0.06);
+  --shadow-md: 0 4px 12px rgba(45, 32, 22, 0.08);
+  --shadow-lg: 0 8px 24px rgba(45, 32, 22, 0.1);
+  --font: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --transition: 0.2s ease;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-  background: #f5f7fa;
-  color: #1a1a2e;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
 .hidden { display: none !important; }
 
+/* ── Focus ── */
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 /* ── 首页 ── */
 
-.view { max-width: 680px; margin: 0 auto; padding: 40px 24px; }
+.view {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+
+.logo-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.logo-area img {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 12px;
+}
 
 .logo {
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 700;
   text-align: center;
-  color: #2d6cdf;
-  margin-bottom: 4px;
+  color: var(--primary);
+  letter-spacing: -0.5px;
 }
 
 .subtitle {
   text-align: center;
-  color: #888;
+  color: var(--text-muted);
   font-size: 15px;
   margin-bottom: 20px;
 }
@@ -31,8 +85,8 @@ body {
 .status-bar {
   text-align: center;
   font-size: 13px;
-  color: #888;
-  margin-bottom: 30px;
+  color: var(--text-muted);
+  margin-bottom: 36px;
 }
 
 .status-dot {
@@ -44,8 +98,8 @@ body {
   vertical-align: middle;
 }
 
-.status-dot.on { background: #4caf50; }
-.status-dot.off { background: #e53935; }
+.status-dot.on { background: var(--success); }
+.status-dot.off { background: var(--error); }
 
 /* ── 卡片 ── */
 
@@ -56,65 +110,69 @@ body {
 }
 
 .card {
-  background: #fff;
-  border-radius: 14px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
   padding: 28px 16px;
   text-align: center;
   cursor: pointer;
   border: 2px solid transparent;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
 }
 
 .card:hover {
-  border-color: #2d6cdf;
-  box-shadow: 0 4px 16px rgba(45,108,223,0.15);
+  border-color: var(--primary-light);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .card-icon { font-size: 36px; margin-bottom: 10px; }
-.card-name { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
-.card-desc { font-size: 13px; color: #888; line-height: 1.5; }
+.card-name { font-size: 18px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+.card-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
 
 /* ── 按钮 ── */
 
 .btn-back {
   background: none;
   border: none;
-  color: #2d6cdf;
+  color: var(--primary);
   font-size: 15px;
   cursor: pointer;
   padding: 4px 0;
   margin-bottom: 12px;
 }
 
+.btn-back:hover { color: var(--primary-hover); }
+
 .btn-primary {
   display: block;
   width: 100%;
   padding: 14px;
   border: none;
-  border-radius: 10px;
-  background: #2d6cdf;
+  border-radius: var(--radius-md);
+  background: var(--primary);
   color: #fff;
   font-size: 17px;
   font-weight: 600;
   cursor: pointer;
   margin-top: 16px;
-  transition: background 0.2s;
+  transition: background var(--transition);
 }
 
-.btn-primary:hover { background: #2458b8; }
+.btn-primary:hover { background: var(--primary-hover); }
 
 .btn-small {
   background: none;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   padding: 4px 12px;
   font-size: 13px;
   cursor: pointer;
-  color: #666;
+  color: var(--text-secondary);
+  transition: all var(--transition);
 }
 
-.btn-small:hover { border-color: #2d6cdf; color: #2d6cdf; }
+.btn-small:hover { border-color: var(--primary); color: var(--primary); }
 
 /* ── 表单 ── */
 
@@ -125,19 +183,23 @@ body {
 .form-group select {
   width: 100%;
   padding: 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 15px;
   font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
   resize: vertical;
   margin-bottom: 10px;
+  transition: border-color var(--transition);
 }
 
 .form-group textarea:focus,
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #2d6cdf;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--primary-subtle);
 }
 
 .form-row {
@@ -150,7 +212,7 @@ body {
 .form-row label {
   flex-shrink: 0;
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
   width: 70px;
 }
 
@@ -167,12 +229,12 @@ body {
   display: flex;
   align-items: center;
   padding: 10px 14px;
-  border-left: 3px solid #ddd;
+  border-left: 3px solid var(--border);
   margin-bottom: 6px;
   font-size: 15px;
-  background: #fff;
-  border-radius: 0 8px 8px 0;
-  transition: all 0.3s;
+  background: var(--surface);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  transition: all 0.3s ease;
 }
 
 .step-item .step-icon { margin-right: 8px; }
@@ -180,38 +242,43 @@ body {
 .step-time {
   margin-left: auto;
   font-size: 13px;
-  color: #aaa;
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
-.step-item.done .step-time { color: #4caf50; }
-.step-item.error .step-time { color: #e53935; }
+.step-item.done .step-time { color: var(--success); }
+.step-item.error .step-time { color: var(--error); }
 
 .step-item.active {
-  border-left-color: #2d6cdf;
-  background: #eef3fd;
+  border-left-color: var(--primary);
+  background: var(--primary-subtle);
   font-weight: 500;
 }
 
-.step-item.active .step-icon { color: #2d6cdf; animation: pulse 1s infinite; }
+.step-item.active .step-icon { color: var(--primary); animation: pulse 1s infinite; }
 
 .step-item.done {
-  border-left-color: #4caf50;
-  color: #4caf50;
+  border-left-color: var(--success);
+  color: var(--success);
 }
 
-.step-item.done .step-icon { color: #4caf50; }
+.step-item.done .step-icon { color: var(--success); }
 
 .step-item.error {
-  border-left-color: #e53935;
-  color: #e53935;
+  border-left-color: var(--error);
+  color: var(--error);
 }
 
-.step-item.error .step-icon { color: #e53935; }
+.step-item.error .step-icon { color: var(--error); }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-item.active .step-icon { animation: none; }
+  .card { transition: none; }
 }
 
 /* ── 结果 ── */
@@ -219,10 +286,10 @@ body {
 .result-area { margin-top: 20px; }
 
 .result-box {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
   padding: 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-sm);
 }
 
 .result-header {
@@ -233,16 +300,16 @@ body {
 
 .btn-copy {
   background: none;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   padding: 5px 14px;
   font-size: 13px;
   cursor: pointer;
-  color: #666;
-  transition: all 0.2s;
+  color: var(--text-secondary);
+  transition: all var(--transition);
 }
 
-.btn-copy:hover { border-color: #2d6cdf; color: #2d6cdf; }
+.btn-copy:hover { border-color: var(--primary); color: var(--primary); }
 
 .result-actions {
   margin-top: 16px;
@@ -251,17 +318,17 @@ body {
 
 .btn-retry {
   padding: 10px 32px;
-  border: 2px solid #2d6cdf;
+  border: 2px solid var(--primary);
   border-radius: 8px;
   background: none;
-  color: #2d6cdf;
+  color: var(--primary);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition);
 }
 
-.btn-retry:hover { background: #2d6cdf; color: #fff; }
+.btn-retry:hover { background: var(--primary); color: #fff; }
 
 .result-text {
   font-size: 16px;
@@ -272,14 +339,14 @@ body {
 
 .result-score {
   font-size: 18px;
-  color: #f5a623;
+  color: var(--gold);
   margin-bottom: 12px;
 }
 
 .result-detail {
   margin-top: 12px;
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .result-detail ul {
@@ -290,8 +357,8 @@ body {
 .result-detail li { margin-bottom: 3px; }
 
 .error {
-  background: #fdecea;
-  color: #c62828;
+  background: var(--error-bg);
+  color: var(--error);
   padding: 14px;
   border-radius: 8px;
   font-size: 15px;
@@ -327,38 +394,44 @@ body {
 }
 
 .chat-bubble.user {
-  background: #2d6cdf;
+  background: var(--primary);
   color: #fff;
   margin-left: auto;
   border-bottom-right-radius: 4px;
 }
 
 .chat-bubble.assistant {
-  background: #fff;
+  background: var(--surface);
   border-bottom-left-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  box-shadow: var(--shadow-sm);
 }
 
 .chat-bubble.tool {
-  background: #f0f0f0;
-  color: #888;
+  background: var(--surface-raised);
+  color: var(--text-muted);
   font-size: 12px;
   margin: -4px 0 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .chat-bubble.error {
-  background: #fdecea;
-  color: #c62828;
+  background: var(--error-bg);
+  color: var(--error);
   font-size: 14px;
 }
 
 .chat-elapsed {
   display: block;
   font-size: 11px;
-  color: #aaa;
+  color: rgba(255, 255, 255, 0.7);
   margin-top: 4px;
   text-align: right;
+}
+
+.chat-bubble.assistant .chat-elapsed,
+.chat-bubble.tool .chat-elapsed,
+.chat-bubble.error .chat-elapsed {
+  color: var(--text-muted);
 }
 
 .chat-input-area {
@@ -370,35 +443,41 @@ body {
 .chat-input-area textarea {
   flex: 1;
   padding: 10px 14px;
-  border: 1px solid #ddd;
-  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   font-size: 15px;
   font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
   resize: none;
+  transition: border-color var(--transition);
 }
 
 .chat-input-area textarea:focus {
   outline: none;
-  border-color: #2d6cdf;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--primary-subtle);
 }
 
 .btn-send {
   padding: 10px 22px;
   border: none;
-  border-radius: 10px;
-  background: #2d6cdf;
+  border-radius: var(--radius-md);
+  background: var(--primary);
   color: #fff;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;
+  transition: background var(--transition);
 }
 
-.btn-send:hover { background: #2458b8; }
+.btn-send:hover { background: var(--primary-hover); }
 
 /* ── 响应式 ── */
 
 @media (max-width: 520px) {
   .cards { grid-template-columns: 1fr; }
   .view { padding: 24px 16px; }
+  .logo-area img { width: 56px; height: 56px; }
 }

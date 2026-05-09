@@ -3,29 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TinyApp</title>
+<title>Cove</title>
+<link rel="icon" href="/static/picture/logo.png" type="image/png">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
 <!-- ═══ 首页 ═══ -->
 <div id="view-home" class="view">
-  <h1 class="logo">TinyApp</h1>
-  <p class="subtitle">本地 AI 助手 — 数据不出本机</p>
-  <div id="status-bar" class="status-bar"></div>
-  <div id="task-cards" class="cards"></div>
+  <div class="logo-area">
+    <img src="/static/picture/logo.png" alt="Cove" width="72" height="72">
+    <h1 class="logo">cove — 你的私人避风港</h1>
+  </div>
+  <div id="status-bar" class="status-bar" role="status" aria-live="polite"></div>
+  <div id="task-cards" class="cards" role="list"></div>
 </div>
 
 <!-- ═══ Workflow 执行 ═══ -->
 <div id="view-workflow" class="view hidden">
-  <button class="btn-back" onclick="showHome()">&#8592; 返回</button>
+  <button class="btn-back" onclick="showHome()" aria-label="返回首页">&#8592; 返回</button>
   <h2 id="wf-title"></h2>
 
   <!-- 翻译输入 -->
   <div id="form-translate" class="form-group hidden">
+    <label for="input-text" class="sr-only">要翻译的文本</label>
     <textarea id="input-text" placeholder="请输入要翻译的文本..." rows="5"></textarea>
     <div class="form-row">
-      <label>目标语言</label>
+      <label for="input-lang">目标语言</label>
       <select id="input-lang"></select>
     </div>
   </div>
@@ -33,7 +37,7 @@
   <!-- 编写输入 -->
   <div id="form-writer" class="form-group hidden">
     <div class="form-row">
-      <label>文档类型</label>
+      <label for="input-doctype">文档类型</label>
       <select id="input-doctype">
         <option value="邮件">邮件</option>
         <option value="报告">报告</option>
@@ -43,36 +47,40 @@
       </select>
     </div>
     <div class="form-row">
-      <label>目标读者</label>
+      <label for="input-audience">目标读者</label>
       <input id="input-audience" type="text" value="通用" placeholder="如：客户、领导、同事">
     </div>
+    <label for="input-desc" class="sr-only">内容描述</label>
     <textarea id="input-desc" placeholder="请描述你要写的内容..." rows="4"></textarea>
   </div>
 
   <button id="btn-run" class="btn-primary" onclick="runWorkflow()">开始</button>
 
   <!-- 步骤进度 -->
-  <div id="wf-progress" class="progress-area hidden">
+  <div id="wf-progress" class="progress-area hidden" role="progressbar" aria-live="polite">
     <div id="wf-steps"></div>
   </div>
 
   <!-- 结果 -->
-  <div id="wf-result" class="result-area hidden"></div>
+  <div id="wf-result" class="result-area hidden" role="region" aria-label="执行结果"></div>
 </div>
 
 <!-- ═══ 自由对话 ═══ -->
 <div id="view-chat" class="view hidden">
   <div class="chat-header">
-    <button class="btn-back" onclick="showHome()">&#8592; 返回</button>
+    <button class="btn-back" onclick="showHome()" aria-label="返回首页">&#8592; 返回</button>
     <h2>AI 对话</h2>
     <button class="btn-small" onclick="resetChat()">新对话</button>
   </div>
-  <div id="chat-messages" class="chat-messages"></div>
+  <div id="chat-messages" class="chat-messages" role="log" aria-live="polite"></div>
   <div class="chat-input-area">
+    <label for="chat-input" class="sr-only">输入消息</label>
     <textarea id="chat-input" placeholder="输入消息... (Enter 发送, Shift+Enter 换行)" rows="2"></textarea>
     <button class="btn-send" onclick="sendChat()">发送</button>
   </div>
 </div>
+
+<style>.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}</style>
 
 <script>
 // ── 状态 ──
@@ -113,7 +121,7 @@ function renderCards(tasks) {
   const el = document.getElementById('task-cards');
   const icons = { '翻译': '&#127760;', '编写': '&#9997;', '对话': '&#128172;' };
   el.innerHTML = tasks.map(t => `
-    <div class="card" onclick="selectTask('${t.name}')">
+    <div class="card" role="listitem" tabindex="0" onclick="selectTask('${t.name}')" onkeydown="if(event.key==='Enter')selectTask('${t.name}')">
       <div class="card-icon">${icons[t.name] || '&#9881;'}</div>
       <div class="card-name">${t.name}</div>
       <div class="card-desc">${t.description}</div>
@@ -258,7 +266,6 @@ function showResult(evt) {
   const out = evt.final_output || {};
   const steps = evt.step_outputs || {};
 
-  // 尝试提取主要文本
   const mainText = out.final_text || out.final_content || out.translated_text || out.content || '';
   const score = out.quality_score;
 
@@ -273,7 +280,6 @@ function showResult(evt) {
     html += `<div class="result-score">质量评分：${stars} (${score}/5)</div>`;
   }
 
-  // 校对信息
   const review = steps['校对'] || steps['润色'] || {};
   const corrections = review.corrections || [];
   const improvements = review.improvements || [];
