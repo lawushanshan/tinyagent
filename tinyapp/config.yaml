@@ -1,24 +1,24 @@
 # TinyApp 配置文件
 
-# 多模型配置
+# 多模型配置（路由模式 — 统一端口，按 model ID 调度）
 llm:
   # 翻译专用模型 — HY-MT1.5-1.8B，专为翻译优化，轻量快速
   translator:
-    base_url: "http://127.0.0.1:8082/v1"
-    model: "HY-MT1.5-1.8B-Q4_K_M"
+    base_url: "http://127.0.0.1:8080/v1"
+    model: "hy-mt1.5-1.8b"
     timeout: 120
     temperature: 0
   # 执行模型（快速，非思考）— 用于分析、起草等生成步骤
   executor:
-    base_url: "http://127.0.0.1:8081/v1"
-    model: "qwen2.5-3b-instruct-q4_k_m"
+    base_url: "http://127.0.0.1:8080/v1"
+    model: "qwen2.5-3b"
     timeout: 300
     temperature: 0
     # no_think: true          # 禁用思考模式（Qwen3.5 等支持 /no_think 的模型）
   # 评分模型（慢，带思考）— 用于校对、评分、审查等需要深度推理的步骤
   reviewer:
     base_url: "http://127.0.0.1:8080/v1"
-    model: "gemma-4-E2B-it"
+    model: "gemma-4-e2b"
     timeout: 180
     temperature: 0
 

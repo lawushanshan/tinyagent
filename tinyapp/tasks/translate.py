@@ -65,7 +65,7 @@ def collect_input() -> str:
     print()
 
     text = input("  请输入要翻译的文本: ").strip()
-    target_raw = input("  目标语言（code或中文名，默认：中文）: ").strip() or "中文"
+    target_raw = input("  目标语言（code或中文名，默认：英文）: ").strip() or "en"
     target_name = get_lang_name(target_raw)
     target_code = get_lang_code(target_raw)
     return f"请将以下文本翻译为{target_name}（{target_code}）：\n\n{text}"

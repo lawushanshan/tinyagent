@@ -135,7 +135,7 @@ function renderStatus(models) {
 function renderLangOptions() {
   var sel = document.getElementById('input-lang');
   sel.innerHTML = languages.map(function(l) {
-    return '<option value="' + l.code + '">' + l.name + ' (' + l.code + ')</option>';
+    return '<option value="' + l.code + '">' + l.name + ' (' + l.code.toUpperCase() + ')</option>';
   }).join('');
 }
 
