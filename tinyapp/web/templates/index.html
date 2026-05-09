@@ -62,6 +62,12 @@
     <textarea id="input-desc" data-i18n-placeholder="placeholder_write" placeholder="Describe what you want to write..." rows="4"></textarea>
   </div>
 
+  <!-- 模式切换 -->
+  <div id="mode-toggle" class="mode-toggle hidden">
+    <button class="mode-btn active" data-mode="normal" onclick="setMode('normal')"><span class="mode-btn-dot"></span><span data-i18n="mode_normal">Normal</span></button>
+    <button class="mode-btn" data-mode="fast" onclick="setMode('fast')">&#9889; <span data-i18n="mode_fast">Fast</span></button>
+  </div>
+
   <button id="btn-run" class="btn-primary" onclick="runWorkflow()" data-i18n="btn_start">Start</button>
 
   <!-- 步骤进度 -->
@@ -157,12 +163,7 @@ function renderCards(tasks) {
   var el = document.getElementById('task-cards');
   var icons = { '翻译': '&#127760;', '编写': '&#9997;', '对话': '&#128172;' };
   el.innerHTML = tasks.map(function(task) {
-    var isWorkflow = task.type === 'workflow';
-    var fastBadge = isWorkflow
-      ? '<span class="card-fast" onclick="event.stopPropagation();selectTask(\'' + task.name + '\', true)" title="' + t('fast_label') + '">&#9889;</span>'
-      : '';
     return '<div class="card" role="listitem" tabindex="0" onclick="selectTask(\'' + task.name + '\')" onkeydown="if(event.key===\'Enter\')selectTask(\'' + task.name + '\')">' +
-      fastBadge +
       '<div class="card-icon">' + (icons[task.name] || '&#9881;') + '</div>' +
       '<div class="card-name">' + getTaskName(task.name) + '</div>' +
       '<div class="card-desc">' + getTaskDesc(task.name) + '</div>' +
@@ -182,7 +183,7 @@ function showHome() {
 }
 
 // ── Select task ──
-function selectTask(name, fast) {
+function selectTask(name) {
   currentTask = tasks.find(function(t) { return t.name === name; });
   if (!currentTask) return;
 
@@ -191,16 +192,24 @@ function selectTask(name, fast) {
     return;
   }
 
-  fastMode = !!fast;
-  var titleText = getTaskDesc(name);
-  if (fastMode) titleText += ' (' + t('fast_label') + ')';
-  document.getElementById('wf-title').textContent = titleText;
+  fastMode = false;
+  document.getElementById('wf-title').textContent = getTaskDesc(name);
   document.getElementById('form-translate').classList.toggle('hidden', name !== '翻译');
   document.getElementById('form-writer').classList.toggle('hidden', name !== '编写');
+  document.getElementById('mode-toggle').classList.remove('hidden');
   document.getElementById('wf-progress').classList.add('hidden');
   document.getElementById('wf-result').classList.add('hidden');
   document.getElementById('btn-run').classList.remove('hidden');
+  setMode('normal');
   showView('view-workflow');
+}
+
+function setMode(mode) {
+  fastMode = mode === 'fast';
+  var btns = document.querySelectorAll('.mode-btn');
+  btns.forEach(function(b) {
+    b.classList.toggle('active', b.getAttribute('data-mode') === mode);
+  });
 }
 
 // ── Workflow ──

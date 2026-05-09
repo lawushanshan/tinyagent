@@ -131,25 +131,55 @@ body {
 .card-name { font-size: 18px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
 .card-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
 
-.card-fast {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: var(--primary-subtle);
-  color: var(--primary);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: background var(--transition), color var(--transition);
-  border: none;
-  line-height: 1.4;
+/* ── 模式切换 ── */
+
+.mode-toggle {
+  display: flex;
+  gap: 6px;
+  margin: 16px 0;
+  padding: 4px;
+  background: var(--bg);
+  border-radius: var(--radius);
 }
 
-.card-fast:hover {
+.mode-btn {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.mode-btn:hover {
+  color: var(--primary);
+}
+
+.mode-btn.active {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+.mode-btn-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   background: var(--primary);
-  color: #fff;
+  display: none;
+}
+
+.mode-btn.active .mode-btn-dot {
+  display: inline-block;
 }
 
 /* ── 按钮 ── */
