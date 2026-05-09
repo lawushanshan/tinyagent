@@ -55,6 +55,10 @@
       <select id="input-doctype"></select>
     </div>
     <div class="form-row">
+      <label for="input-write-lang" data-i18n="label_write_lang">Output Language</label>
+      <select id="input-write-lang"></select>
+    </div>
+    <div class="form-row">
       <label for="input-audience" data-i18n="label_audience">Audience</label>
       <input id="input-audience" type="text" data-i18n-placeholder="placeholder_audience" placeholder="e.g., client, manager, colleague">
     </div>
@@ -126,6 +130,7 @@ async function init() {
 function applyLang() {
   applyI18n();
   renderDocTypeOptions();
+  renderWriteLangOptions();
   if (tasks.length) renderCards(tasks);
   if (Object.keys(lastStatus).length) renderStatus(lastStatus);
 }
@@ -156,6 +161,14 @@ function renderDocTypeOptions() {
   ];
   sel.innerHTML = docTypes.map(function(d) {
     return '<option value="' + d.value + '">' + t(d.key) + '</option>';
+  }).join('');
+}
+
+function renderWriteLangOptions() {
+  var sel = document.getElementById('input-write-lang');
+  var cur = currentLang();
+  sel.innerHTML = SUPPORTED_LANGS.map(function(l) {
+    return '<option value="' + l.code + '"' + (l.code === cur ? ' selected' : '') + '>' + l.name + '</option>';
   }).join('');
 }
 
@@ -223,9 +236,12 @@ function buildInput() {
   }
   if (currentTask.name === '编写') {
     var doctype = document.getElementById('input-doctype').value;
+    var writeLang = document.getElementById('input-write-lang').value;
+    var writeLangName = SUPPORTED_LANGS.find(function(l) { return l.code === writeLang; });
+    var langName = writeLangName ? writeLangName.name : writeLang;
     var audience = document.getElementById('input-audience').value || '通用';
     var desc = document.getElementById('input-desc').value.trim();
-    return '请写一篇' + doctype + '，读者是' + audience + '。内容要求：' + desc;
+    return '请用' + langName + '（' + writeLang + '）写一篇' + doctype + '，读者是' + audience + '。内容要求：' + desc;
   }
   return '';
 }

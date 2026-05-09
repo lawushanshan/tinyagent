@@ -36,7 +36,7 @@ WRITER_TASK.steps = [
     StepDef(
         name="需求分析",
         description="分析写作需求",
-        system_prompt="""你是写作需求分析师。分析用户需求，直接输出JSON，不要多余文字。
+        system_prompt="""你是写作需求分析师。分析用户需求，提取写作要素。直接输出JSON，不要多余文字。
 示例：{"doc_type":"邮件","tone":"正式","audience":"客户","key_points":["感谢合作"],"length_hint":"中等"}""",
         output_model=RequirementOutput,
         model_role="executor",
@@ -44,8 +44,18 @@ WRITER_TASK.steps = [
     StepDef(
         name="起草",
         description="起草文档",
-        system_prompt="""你是专业写手。根据需求分析起草文档。直接输出JSON，content为正文全文。
-示例：{"title":"标题","content":"正文内容","word_count":200}""",
+        system_prompt="""你是专业写手。根据需求分析起草完整文档。
+
+要求：
+- 必须输出完整的文档内容，包括开头、主体、结尾
+- 邮件类：必须包含称呼、正文、祝语、署名
+- 报告/总结类：必须有标题、分段论述、结论
+- 通知类：必须包含标题、正文、落款和日期
+- 方案类：必须有目标、步骤、预期成果
+- content 字段包含完整排版好的全文，使用换行符分段
+
+直接输出JSON。
+示例：{"title":"标题","content":"完整正文内容","word_count":200}""",
         output_model=DraftOutput,
         model_role="executor",
     ),
