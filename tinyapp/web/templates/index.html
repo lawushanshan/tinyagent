@@ -66,6 +66,20 @@
     <textarea id="input-desc" data-i18n-placeholder="placeholder_write" placeholder="Describe what you want to write..." rows="4"></textarea>
   </div>
 
+  <!-- 改写输入 -->
+  <div id="form-rewrite" class="form-group hidden">
+    <label for="input-rewrite-text" class="sr-only">Text to rewrite</label>
+    <textarea id="input-rewrite-text" data-i18n-placeholder="placeholder_rewrite" placeholder="Paste the text you want to rewrite..." rows="5"></textarea>
+    <div class="form-row">
+      <label for="input-rewrite-op" data-i18n="label_rewrite_op">Operation</label>
+      <select id="input-rewrite-op"></select>
+    </div>
+    <div class="form-row">
+      <label for="input-rewrite-lang" data-i18n="label_write_lang">Output Language</label>
+      <select id="input-rewrite-lang"></select>
+    </div>
+  </div>
+
   <!-- 模式切换 -->
   <div id="mode-toggle" class="mode-toggle hidden">
     <button class="mode-btn active" data-mode="normal" onclick="setMode('normal')"><span class="mode-btn-dot"></span><span data-i18n="mode_normal">Normal</span></button>
@@ -131,6 +145,8 @@ function applyLang() {
   applyI18n();
   renderDocTypeOptions();
   renderWriteLangOptions();
+  renderRewriteOptions();
+  renderRewriteLangOptions();
   if (tasks.length) renderCards(tasks);
   if (Object.keys(lastStatus).length) renderStatus(lastStatus);
 }
@@ -172,9 +188,31 @@ function renderWriteLangOptions() {
   }).join('');
 }
 
+function renderRewriteOptions() {
+  var sel = document.getElementById('input-rewrite-op');
+  var ops = [
+    { value: '扩写', key: 'rw_expand' },
+    { value: '缩写', key: 'rw_condense' },
+    { value: '改写', key: 'rw_rewrite' },
+    { value: '纠错', key: 'rw_correct' },
+    { value: '续写', key: 'rw_continue' },
+  ];
+  sel.innerHTML = ops.map(function(o) {
+    return '<option value="' + o.value + '">' + t(o.key) + '</option>';
+  }).join('');
+}
+
+function renderRewriteLangOptions() {
+  var sel = document.getElementById('input-rewrite-lang');
+  var cur = currentLang();
+  sel.innerHTML = SUPPORTED_LANGS.map(function(l) {
+    return '<option value="' + l.code + '"' + (l.code === cur ? ' selected' : '') + '>' + l.name + '</option>';
+  }).join('');
+}
+
 function renderCards(tasks) {
   var el = document.getElementById('task-cards');
-  var icons = { '翻译': '&#127760;', '编写': '&#9997;', '对话': '&#128172;' };
+  var icons = { '翻译': '&#127760;', '编写': '&#9997;', '改写': '&#9998;', '对话': '&#128172;' };
   el.innerHTML = tasks.map(function(task) {
     return '<div class="card" role="listitem" tabindex="0" onclick="selectTask(\'' + task.name + '\')" onkeydown="if(event.key===\'Enter\')selectTask(\'' + task.name + '\')">' +
       '<div class="card-icon">' + (icons[task.name] || '&#9881;') + '</div>' +
@@ -209,6 +247,7 @@ function selectTask(name) {
   document.getElementById('wf-title').textContent = getTaskDesc(name);
   document.getElementById('form-translate').classList.toggle('hidden', name !== '翻译');
   document.getElementById('form-writer').classList.toggle('hidden', name !== '编写');
+  document.getElementById('form-rewrite').classList.toggle('hidden', name !== '改写');
   document.getElementById('mode-toggle').classList.remove('hidden');
   document.getElementById('wf-progress').classList.add('hidden');
   document.getElementById('wf-result').classList.add('hidden');
@@ -242,6 +281,14 @@ function buildInput() {
     var audience = document.getElementById('input-audience').value || '通用';
     var desc = document.getElementById('input-desc').value.trim();
     return '请用' + langName + '（' + writeLang + '）写一篇' + doctype + '，读者是' + audience + '。内容要求：' + desc;
+  }
+  if (currentTask.name === '改写') {
+    var text = document.getElementById('input-rewrite-text').value.trim();
+    var op = document.getElementById('input-rewrite-op').value;
+    var rwLang = document.getElementById('input-rewrite-lang').value;
+    var rwLangName = SUPPORTED_LANGS.find(function(l) { return l.code === rwLang; });
+    var rwLangStr = rwLangName ? rwLangName.name : rwLang;
+    return '操作类型：' + op + '\n输出语言：' + rwLangStr + '（' + rwLang + '）\n\n原文：\n' + text;
   }
   return '';
 }
@@ -352,7 +399,7 @@ function showResult(evt) {
     html += '<div class="result-score">' + t('result_quality') + '：' + stars + ' (' + score + '/5)</div>';
   }
 
-  var review = steps['校对'] || steps['润色'] || {};
+  var review = steps['校对'] || steps['润色'] || steps['审校'] || {};
   var corrections = review.corrections || [];
   var improvements = review.improvements || [];
   var issues = review.issues || [];
