@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,8 +16,9 @@
       Cove
     </a>
     <div class="site-nav-links">
-      <a href="/">Home</a>
-      <a href="/privacy">Privacy</a>
+      <a href="/" data-i18n="nav_home">Home</a>
+      <a href="/privacy" data-i18n="nav_privacy">Privacy</a>
+      <select id="lang-switcher" onchange="setLang(this.value)" aria-label="Language"></select>
     </div>
   </div>
 </nav>
@@ -26,7 +27,7 @@
 <div id="view-home" class="view">
   <div class="logo-area">
     <img src="/static/picture/logo.png" alt="Cove" width="72" height="72">
-    <h1 class="logo">cove — 你的私人避风港</h1>
+    <h1 class="logo" data-i18n="logo_text">cove — your trusted assistant</h1>
   </div>
   <div id="status-bar" class="status-bar" role="status" aria-live="polite"></div>
   <div id="task-cards" class="cards" role="list"></div>
@@ -34,15 +35,15 @@
 
 <!-- ═══ Workflow 执行 ═══ -->
 <div id="view-workflow" class="view hidden">
-  <button class="btn-back" onclick="showHome()" aria-label="返回首页">&#8592; 返回</button>
+  <button class="btn-back" onclick="showHome()" aria-label="Back to home" data-i18n="btn_back">&#8592; Back</button>
   <h2 id="wf-title"></h2>
 
   <!-- 翻译输入 -->
   <div id="form-translate" class="form-group hidden">
-    <label for="input-text" class="sr-only">要翻译的文本</label>
-    <textarea id="input-text" placeholder="请输入要翻译的文本..." rows="5"></textarea>
+    <label for="input-text" class="sr-only">Text to translate</label>
+    <textarea id="input-text" data-i18n-placeholder="placeholder_translate" placeholder="Enter text to translate..." rows="5"></textarea>
     <div class="form-row">
-      <label for="input-lang">目标语言</label>
+      <label for="input-lang" data-i18n="label_target_lang">Target Language</label>
       <select id="input-lang"></select>
     </div>
   </div>
@@ -50,24 +51,18 @@
   <!-- 编写输入 -->
   <div id="form-writer" class="form-group hidden">
     <div class="form-row">
-      <label for="input-doctype">文档类型</label>
-      <select id="input-doctype">
-        <option value="邮件">邮件</option>
-        <option value="报告">报告</option>
-        <option value="总结">总结</option>
-        <option value="通知">通知</option>
-        <option value="方案">方案</option>
-      </select>
+      <label for="input-doctype" data-i18n="label_doc_type">Document Type</label>
+      <select id="input-doctype"></select>
     </div>
     <div class="form-row">
-      <label for="input-audience">目标读者</label>
-      <input id="input-audience" type="text" value="通用" placeholder="如：客户、领导、同事">
+      <label for="input-audience" data-i18n="label_audience">Audience</label>
+      <input id="input-audience" type="text" data-i18n-placeholder="placeholder_audience" placeholder="e.g., client, manager, colleague">
     </div>
-    <label for="input-desc" class="sr-only">内容描述</label>
-    <textarea id="input-desc" placeholder="请描述你要写的内容..." rows="4"></textarea>
+    <label for="input-desc" class="sr-only">Content description</label>
+    <textarea id="input-desc" data-i18n-placeholder="placeholder_write" placeholder="Describe what you want to write..." rows="4"></textarea>
   </div>
 
-  <button id="btn-run" class="btn-primary" onclick="runWorkflow()">开始</button>
+  <button id="btn-run" class="btn-primary" onclick="runWorkflow()" data-i18n="btn_start">Start</button>
 
   <!-- 步骤进度 -->
   <div id="wf-progress" class="progress-area hidden" role="progressbar" aria-live="polite">
@@ -75,76 +70,103 @@
   </div>
 
   <!-- 结果 -->
-  <div id="wf-result" class="result-area hidden" role="region" aria-label="执行结果"></div>
+  <div id="wf-result" class="result-area hidden" role="region" aria-label="Results"></div>
 </div>
 
 <!-- ═══ 自由对话 ═══ -->
 <div id="view-chat" class="view hidden">
   <div class="chat-header">
-    <button class="btn-back" onclick="showHome()" aria-label="返回首页">&#8592; 返回</button>
-    <h2>AI 对话</h2>
-    <button class="btn-small" onclick="resetChat()">新对话</button>
+    <button class="btn-back" onclick="showHome()" aria-label="Back to home" data-i18n="btn_back">&#8592; Back</button>
+    <h2 data-i18n="chat_header">AI Chat</h2>
+    <button class="btn-small" onclick="resetChat()" data-i18n="btn_new_chat">New Chat</button>
   </div>
   <div id="chat-messages" class="chat-messages" role="log" aria-live="polite"></div>
   <div class="chat-input-area">
-    <label for="chat-input" class="sr-only">输入消息</label>
-    <textarea id="chat-input" placeholder="输入消息... (Enter 发送, Shift+Enter 换行)" rows="2"></textarea>
-    <button class="btn-send" onclick="sendChat()">发送</button>
+    <label for="chat-input" class="sr-only">Message input</label>
+    <textarea id="chat-input" data-i18n-placeholder="chat_placeholder" placeholder="Type a message... (Enter to send, Shift+Enter for new line)" rows="2"></textarea>
+    <button class="btn-send" onclick="sendChat()" data-i18n="btn_send">Send</button>
   </div>
 </div>
 
 <style>.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}</style>
 
+<script src="/static/i18n.js"></script>
 <script>
-// ── 状态 ──
-let currentTask = null;
-let tasks = [];
-let languages = [];
-let running = false;
+// ── State ──
+var currentTask = null;
+var tasks = [];
+var languages = [];
+var running = false;
+var lastStatus = {};
 
-// ── 初始化 ──
+// ── Init ──
 async function init() {
-  const [tasksRes, statusRes, langRes] = await Promise.all([
-    fetch('/api/tasks').then(r => r.json()),
-    fetch('/api/status').then(r => r.json()),
-    fetch('/api/languages').then(r => r.json()),
+  initLangSwitcher();
+  window.addEventListener('langchange', applyLang);
+
+  var r = await Promise.all([
+    fetch('/api/tasks').then(function(r){ return r.json(); }),
+    fetch('/api/status').then(function(r){ return r.json(); }),
+    fetch('/api/languages').then(function(r){ return r.json(); }),
   ]);
-  tasks = tasksRes;
-  languages = langRes;
-  renderStatus(statusRes);
-  renderCards(tasksRes);
+  tasks = r[0]; lastStatus = r[1]; languages = r[2];
+  renderStatus(lastStatus);
+  renderCards(tasks);
   renderLangOptions();
+  applyLang();
+}
+
+function applyLang() {
+  applyI18n();
+  renderDocTypeOptions();
+  if (tasks.length) renderCards(tasks);
+  if (Object.keys(lastStatus).length) renderStatus(lastStatus);
 }
 
 function renderStatus(models) {
-  const bar = document.getElementById('status-bar');
-  bar.innerHTML = Object.values(models).map(m =>
-    `<span class="status-dot ${m.connected ? 'on' : 'off'}"></span>${m.label}`
-  ).join(' &nbsp; ');
+  var bar = document.getElementById('status-bar');
+  bar.innerHTML = Object.entries(models).map(function(entry) {
+    var role = entry[0], m = entry[1];
+    return '<span class="status-dot ' + (m.connected ? 'on' : 'off') + '"></span>' + getRoleLabel(role);
+  }).join(' &nbsp; ');
 }
 
 function renderLangOptions() {
-  const sel = document.getElementById('input-lang');
-  sel.innerHTML = languages.map(l =>
-    `<option value="${l.code}">${l.name}（${l.code}）</option>`
-  ).join('');
+  var sel = document.getElementById('input-lang');
+  sel.innerHTML = languages.map(function(l) {
+    return '<option value="' + l.code + '">' + l.name + ' (' + l.code + ')</option>';
+  }).join('');
+}
+
+function renderDocTypeOptions() {
+  var sel = document.getElementById('input-doctype');
+  var docTypes = [
+    { value: '邮件', key: 'doc_email' },
+    { value: '报告', key: 'doc_report' },
+    { value: '总结', key: 'doc_summary' },
+    { value: '通知', key: 'doc_notice' },
+    { value: '方案', key: 'doc_proposal' },
+  ];
+  sel.innerHTML = docTypes.map(function(d) {
+    return '<option value="' + d.value + '">' + t(d.key) + '</option>';
+  }).join('');
 }
 
 function renderCards(tasks) {
-  const el = document.getElementById('task-cards');
-  const icons = { '翻译': '&#127760;', '编写': '&#9997;', '对话': '&#128172;' };
-  el.innerHTML = tasks.map(t => `
-    <div class="card" role="listitem" tabindex="0" onclick="selectTask('${t.name}')" onkeydown="if(event.key==='Enter')selectTask('${t.name}')">
-      <div class="card-icon">${icons[t.name] || '&#9881;'}</div>
-      <div class="card-name">${t.name}</div>
-      <div class="card-desc">${t.description}</div>
-    </div>
-  `).join('');
+  var el = document.getElementById('task-cards');
+  var icons = { '翻译': '&#127760;', '编写': '&#9997;', '对话': '&#128172;' };
+  el.innerHTML = tasks.map(function(task) {
+    return '<div class="card" role="listitem" tabindex="0" onclick="selectTask(\'' + task.name + '\')" onkeydown="if(event.key===\'Enter\')selectTask(\'' + task.name + '\')">' +
+      '<div class="card-icon">' + (icons[task.name] || '&#9881;') + '</div>' +
+      '<div class="card-name">' + getTaskName(task.name) + '</div>' +
+      '<div class="card-desc">' + getTaskDesc(task.name) + '</div>' +
+    '</div>';
+  }).join('');
 }
 
-// ── 视图切换 ──
+// ── View switching ──
 function showView(id) {
-  document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+  document.querySelectorAll('.view').forEach(function(v) { v.classList.add('hidden'); });
   document.getElementById(id).classList.remove('hidden');
 }
 
@@ -153,9 +175,9 @@ function showHome() {
   showView('view-home');
 }
 
-// ── 选择任务 ──
+// ── Select task ──
 function selectTask(name) {
-  currentTask = tasks.find(t => t.name === name);
+  currentTask = tasks.find(function(t) { return t.name === name; });
   if (!currentTask) return;
 
   if (currentTask.type === 'chat') {
@@ -163,7 +185,7 @@ function selectTask(name) {
     return;
   }
 
-  document.getElementById('wf-title').textContent = currentTask.description;
+  document.getElementById('wf-title').textContent = getTaskDesc(name);
   document.getElementById('form-translate').classList.toggle('hidden', name !== '翻译');
   document.getElementById('form-writer').classList.toggle('hidden', name !== '编写');
   document.getElementById('wf-progress').classList.add('hidden');
@@ -172,27 +194,27 @@ function selectTask(name) {
   showView('view-workflow');
 }
 
-// ── 执行 Workflow ──
+// ── Workflow ──
 function buildInput() {
   if (currentTask.name === '翻译') {
-    const text = document.getElementById('input-text').value.trim();
-    const langCode = document.getElementById('input-lang').value;
-    const langOption = languages.find(l => l.code === langCode);
-    const langName = langOption ? langOption.name : langCode;
-    return `请将以下文本翻译为${langName}（${langCode}）：\n\n${text}`;
+    var text = document.getElementById('input-text').value.trim();
+    var langCode = document.getElementById('input-lang').value;
+    var langOption = languages.find(function(l) { return l.code === langCode; });
+    var langName = langOption ? langOption.name : langCode;
+    return '请将以下文本翻译为' + langName + '（' + langCode + '）：\n\n' + text;
   }
   if (currentTask.name === '编写') {
-    const doctype = document.getElementById('input-doctype').value;
-    const audience = document.getElementById('input-audience').value || '通用';
-    const desc = document.getElementById('input-desc').value.trim();
-    return `请写一篇${doctype}，读者是${audience}。内容要求：${desc}`;
+    var doctype = document.getElementById('input-doctype').value;
+    var audience = document.getElementById('input-audience').value || '通用';
+    var desc = document.getElementById('input-desc').value.trim();
+    return '请写一篇' + doctype + '，读者是' + audience + '。内容要求：' + desc;
   }
   return '';
 }
 
 async function runWorkflow() {
-  const user_input = buildInput();
-  if (!user_input) { alert('请填写内容'); return; }
+  var user_input = buildInput();
+  if (!user_input) { alert(t('error_fill')); return; }
   if (running) return;
   running = true;
 
@@ -200,49 +222,51 @@ async function runWorkflow() {
   document.getElementById('wf-progress').classList.remove('hidden');
   document.getElementById('wf-result').classList.add('hidden');
 
-  const stepsEl = document.getElementById('wf-steps');
-  stepsEl.innerHTML = (currentTask.step_names || []).map((n, i) =>
-    `<div class="step-item" id="step-${i}"><span class="step-icon">&#9675;</span> ${n}<span class="step-time" id="time-${i}"></span></div>`
-  ).join('');
+  var stepsEl = document.getElementById('wf-steps');
+  var stepNames = (currentTask.step_names || []);
+  stepsEl.innerHTML = stepNames.map(function(n, i) {
+    return '<div class="step-item" id="step-' + i + '"><span class="step-icon">&#9675;</span> ' + getStepName(n) + '<span class="step-time" id="time-' + i + '"></span></div>';
+  }).join('');
 
   try {
-    const resp = await fetch('/api/run', {
+    var resp = await fetch('/api/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task_name: currentTask.name, user_input }),
+      body: JSON.stringify({ task_name: currentTask.name, user_input: user_input }),
     });
 
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
+    var reader = resp.body.getReader();
+    var decoder = new TextDecoder();
+    var buffer = '';
 
     while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+      var chunk = await reader.read();
+      if (chunk.done) break;
+      buffer += decoder.decode(chunk.value, { stream: true });
 
-      const lines = buffer.split('\n');
+      var lines = buffer.split('\n');
       buffer = lines.pop();
 
-      for (const line of lines) {
+      for (var li = 0; li < lines.length; li++) {
+        var line = lines[li];
         if (!line.startsWith('data: ')) continue;
         try {
-          const evt = JSON.parse(line.slice(6));
+          var evt = JSON.parse(line.slice(6));
           handleEvent(evt, stepsEl);
-        } catch {}
+        } catch(e) {}
       }
     }
   } catch (e) {
     document.getElementById('wf-result').classList.remove('hidden');
-    document.getElementById('wf-result').innerHTML = `<div class="error">执行失败: ${e.message}</div>`;
+    document.getElementById('wf-result').innerHTML = '<div class="error">' + t('error_exec') + e.message + '</div>';
   }
   running = false;
 }
 
 function handleEvent(evt, stepsEl) {
   if (evt.type === 'step') {
-    const idx = evt.step_num - 1;
-    const el = document.getElementById('step-' + idx);
+    var idx = evt.step_num - 1;
+    var el = document.getElementById('step-' + idx);
     if (!el) return;
     if (evt.status === 'start') {
       el.classList.add('active');
@@ -263,62 +287,62 @@ function handleEvent(evt, stepsEl) {
     showResult(evt);
   } else if (evt.type === 'error') {
     document.getElementById('wf-result').classList.remove('hidden');
-    document.getElementById('wf-result').innerHTML = `<div class="error">错误: ${evt.message}</div>`;
+    document.getElementById('wf-result').innerHTML = '<div class="error">' + t('error_generic') + evt.message + '</div>';
   }
 }
 
 function showResult(evt) {
-  const el = document.getElementById('wf-result');
+  var el = document.getElementById('wf-result');
   el.classList.remove('hidden');
 
   if (!evt.success) {
-    el.innerHTML = `<div class="error">执行失败: ${evt.error}</div>`;
+    el.innerHTML = '<div class="error">' + t('error_exec') + evt.error + '</div>';
     return;
   }
 
-  const out = evt.final_output || {};
-  const steps = evt.step_outputs || {};
+  var out = evt.final_output || {};
+  var steps = evt.step_outputs || {};
 
-  const mainText = out.final_text || out.final_content || out.translated_text || out.content || '';
-  const score = out.quality_score;
+  var mainText = out.final_text || out.final_content || out.translated_text || out.content || '';
+  var score = out.quality_score;
 
-  let html = '<div class="result-box">';
+  var html = '<div class="result-box">';
   if (mainText) {
-    html += `<div class="result-header"><button class="btn-copy" onclick="copyText(this, '${btoa(unescape(encodeURIComponent(mainText)))}')">复制内容</button></div>`;
-    html += `<div class="result-text">${escapeHtml(mainText)}</div>`;
+    html += '<div class="result-header"><button class="btn-copy" onclick="copyText(this, \'' + btoa(unescape(encodeURIComponent(mainText))) + '\')">' + t('btn_copy') + '</button></div>';
+    html += '<div class="result-text">' + escapeHtml(mainText) + '</div>';
   }
 
   if (score) {
-    const stars = '★'.repeat(score) + '☆'.repeat(5 - score);
-    html += `<div class="result-score">质量评分：${stars} (${score}/5)</div>`;
+    var stars = '★'.repeat(score) + '☆'.repeat(5 - score);
+    html += '<div class="result-score">' + t('result_quality') + '：' + stars + ' (' + score + '/5)</div>';
   }
 
-  const review = steps['校对'] || steps['润色'] || {};
-  const corrections = review.corrections || [];
-  const improvements = review.improvements || [];
-  const issues = review.issues || [];
+  var review = steps['校对'] || steps['润色'] || {};
+  var corrections = review.corrections || [];
+  var improvements = review.improvements || [];
+  var issues = review.issues || [];
 
   if (corrections.length) {
-    html += '<div class="result-detail"><b>修改说明：</b><ul>' +
-      corrections.map(c => `<li>${escapeHtml(c)}</li>`).join('') + '</ul></div>';
+    html += '<div class="result-detail"><b>' + t('result_corrections') + '：</b><ul>' +
+      corrections.map(function(c) { return '<li>' + escapeHtml(c) + '</li>'; }).join('') + '</ul></div>';
   }
   if (improvements.length) {
-    html += '<div class="result-detail"><b>润色改进：</b><ul>' +
-      improvements.map(c => `<li>${escapeHtml(c)}</li>`).join('') + '</ul></div>';
+    html += '<div class="result-detail"><b>' + t('result_improvements') + '：</b><ul>' +
+      improvements.map(function(c) { return '<li>' + escapeHtml(c) + '</li>'; }).join('') + '</ul></div>';
   }
   if (issues.length) {
-    html += '<div class="result-detail"><b>发现问题：</b><ul>' +
-      issues.map(c => `<li>${escapeHtml(c)}</li>`).join('') + '</ul></div>';
+    html += '<div class="result-detail"><b>' + t('result_issues') + '：</b><ul>' +
+      issues.map(function(c) { return '<li>' + escapeHtml(c) + '</li>'; }).join('') + '</ul></div>';
   }
 
-  html += '<div class="result-actions"><button class="btn-retry" onclick="retryTask()">再来一次</button></div>';
+  html += '<div class="result-actions"><button class="btn-retry" onclick="retryTask()">' + t('btn_retry') + '</button></div>';
   html += '</div>';
   el.innerHTML = html;
 }
 
-// ── 聊天 ──
-const chatInput = document.getElementById('chat-input');
-chatInput.addEventListener('keydown', e => {
+// ── Chat ──
+var chatInput = document.getElementById('chat-input');
+chatInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
     sendChat();
@@ -326,40 +350,40 @@ chatInput.addEventListener('keydown', e => {
 });
 
 async function sendChat() {
-  const msg = chatInput.value.trim();
+  var msg = chatInput.value.trim();
   if (!msg) return;
   chatInput.value = '';
 
   appendChat('user', msg);
 
   try {
-    const resp = await fetch('/api/chat', {
+    var resp = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: msg }),
     });
-    const data = await resp.json();
+    var data = await resp.json();
 
     if (data.error) {
       appendChat('error', data.error);
     } else {
       if (data.tools && data.tools.length) {
-        data.tools.forEach(t => appendChat('tool', `${t.name}(${JSON.stringify(t.args)})`));
+        data.tools.forEach(function(tool) { appendChat('tool', tool.name + '(' + JSON.stringify(tool.args) + ')'); });
       }
       appendChat('assistant', data.reply, data.elapsed);
     }
   } catch (e) {
-    appendChat('error', '请求失败: ' + e.message);
+    appendChat('error', t('error_request') + e.message);
   }
 }
 
 function appendChat(role, text, elapsed) {
-  const el = document.getElementById('chat-messages');
-  const div = document.createElement('div');
+  var el = document.getElementById('chat-messages');
+  var div = document.createElement('div');
   div.className = 'chat-bubble ' + role;
 
-  let html = escapeHtml(text);
-  if (elapsed) html += `<span class="chat-elapsed">${elapsed}s</span>`;
+  var html = escapeHtml(text);
+  if (elapsed) html += '<span class="chat-elapsed">' + elapsed + 's</span>';
   div.innerHTML = html;
 
   el.appendChild(div);
@@ -378,22 +402,22 @@ function retryTask() {
   running = false;
 }
 
-// ── 工具 ──
+// ── Utils ──
 function escapeHtml(str) {
-  const d = document.createElement('div');
+  var d = document.createElement('div');
   d.textContent = str;
   return d.innerHTML;
 }
 
 function copyText(btn, b64) {
-  const text = decodeURIComponent(escape(atob(b64)));
-  navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = '已复制';
-    setTimeout(() => btn.textContent = '复制内容', 1500);
+  var text = decodeURIComponent(escape(atob(b64)));
+  navigator.clipboard.writeText(text).then(function() {
+    btn.textContent = t('btn_copied');
+    setTimeout(function() { btn.textContent = t('btn_copy'); }, 1500);
   });
 }
 
-// ── 启动 ──
+// ── Start ──
 init();
 </script>
 </body>

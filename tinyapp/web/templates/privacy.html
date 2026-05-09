@@ -16,14 +16,15 @@
       Cove
     </a>
     <div class="site-nav-links">
-      <a href="/">Home</a>
-      <a href="/app">App</a>
+      <a href="/" data-i18n="nav_home">Home</a>
+      <a href="/app" data-i18n="nav_app">App</a>
+      <select id="lang-switcher" onchange="setLang(this.value)" aria-label="Language"></select>
     </div>
   </div>
 </nav>
 
 <main class="privacy-page">
-  <h1>Privacy Policy</h1>
+  <h1 data-i18n="privacy_title">Privacy Policy</h1>
   <p class="privacy-updated">Last updated: May 2026</p>
 
   <h2>1. Introduction</h2>
@@ -31,7 +32,6 @@
   <p><strong>Our core promise: Your text never leaves your device.</strong> We do not send your drafts, emails, contracts, or any other content to any cloud server.</p>
 
   <h2>2. What data do we collect?</h2>
-
   <h3>2.1 Data that stays on your device (we never access)</h3>
   <ul>
     <li>All text you type or generate within the App</li>
@@ -99,12 +99,17 @@
       Cove
     </div>
     <div class="footer-links">
-      <a href="/">Home</a>
-      <a href="/app">App</a>
+      <a href="/" data-i18n="footer_home">Home</a>
+      <a href="/app" data-i18n="footer_app">App</a>
     </div>
-    <span class="footer-copy">&copy; 2026 Cove. All rights reserved.</span>
+    <span class="footer-copy" data-i18n="footer_copy">&copy; 2026 Cove. All rights reserved.</span>
   </div>
 </footer>
 
+<script src="/static/i18n.js"></script>
+<script>
+initLangSwitcher();
+applyI18n();
+</script>
 </body>
 </html>

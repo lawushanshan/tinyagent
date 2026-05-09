@@ -528,6 +528,21 @@ body {
 
 .site-nav-links a:hover { color: var(--primary); }
 
+#lang-switcher {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-secondary);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color var(--transition);
+}
+
+#lang-switcher:hover { border-color: var(--primary-light); }
+#lang-switcher:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
 /* ── Landing Hero ── */
 
 .hero {
@@ -880,6 +895,36 @@ body {
   color: rgba(255,255,255,0.25);
 }
 
+/* ── Contact Section ── */
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+}
+
+.contact-card {
+  text-align: center;
+  padding: 36px 24px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.contact-icon { font-size: 40px; margin-bottom: 16px; }
+
+.contact-card h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--primary);
+}
+
+.contact-card p {
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
 /* ── Scroll Animations ── */
 
 .fade-in {
@@ -903,6 +948,7 @@ body {
   .hero h1 { font-size: 34px; letter-spacing: -0.5px; }
   .hero p { font-size: 17px; }
   .features-grid { grid-template-columns: 1fr; gap: 20px; }
+  .contact-grid { grid-template-columns: 1fr; }
   .story-grid { grid-template-columns: 1fr; }
   .mission-statement { font-size: 24px; }
   .section { padding: 64px 20px; }

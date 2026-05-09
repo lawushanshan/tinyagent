@@ -16,9 +16,10 @@
       Cove
     </a>
     <div class="site-nav-links">
-      <a href="/app">App</a>
+      <a href="/app" data-i18n="nav_app">App</a>
       <a href="#features">Features</a>
-      <a href="/privacy">Privacy</a>
+      <a href="/privacy" data-i18n="nav_privacy">Privacy</a>
+      <select id="lang-switcher" onchange="setLang(this.value)" aria-label="Language"></select>
     </div>
   </div>
 </nav>
@@ -26,10 +27,10 @@
 <!-- Hero -->
 <section class="hero">
   <div class="hero-content">
-    <span class="hero-badge">On-Device AI</span>
-    <h1>AI that works <em>where you work</em>&nbsp;&mdash; on your device.</h1>
-    <p>Write better emails, contracts, and documents&nbsp;&mdash; without ever sending your words to the cloud.</p>
-    <a href="/app" class="hero-cta">Get Started &rarr;</a>
+    <span class="hero-badge" data-i18n="hero_badge">On-Device AI</span>
+    <h1 data-i18n-html="hero_title">AI that works <em>where you work</em>&nbsp;&mdash; on your device.</h1>
+    <p data-i18n="hero_subtitle">Write better emails, contracts, and documents&nbsp;&mdash; without ever sending your words to the cloud.</p>
+    <a href="/app" class="hero-cta" data-i18n="hero_cta">Get Started &rarr;</a>
   </div>
 </section>
 
@@ -37,24 +38,24 @@
 <section id="features" class="section section-alt">
   <div class="section-inner">
     <div class="section-header">
-      <h2>Why Cove?</h2>
-      <p class="section-subtitle">Simple. Safe. On-device. For everyone.</p>
+      <h2 data-i18n="features_title">Why Cove?</h2>
+      <p class="section-subtitle" data-i18n="features_subtitle">Simple. Safe. On-device. For everyone.</p>
     </div>
     <div class="features-grid">
       <div class="feature-card fade-in">
         <div class="feature-icon" aria-hidden="true">&#9889;</div>
-        <h3>Simple</h3>
-        <p>No tech jargon. No complex setup. Just open and start writing. Cove runs a small, powerful language model right on your device.</p>
+        <h3 data-i18n="feat_simple_t">Simple</h3>
+        <p data-i18n="feat_simple_d">No tech jargon. No complex setup. Just open and start writing. Cove runs a small, powerful language model right on your device.</p>
       </div>
       <div class="feature-card fade-in">
         <div class="feature-icon" aria-hidden="true">&#128274;</div>
-        <h3>Private</h3>
-        <p>Your text never leaves your device. No uploads, no cloud processing, no data collection. Your words stay yours&nbsp;&mdash; always.</p>
+        <h3 data-i18n="feat_private_t">Private</h3>
+        <p data-i18n="feat_private_d">Your text never leaves your device. No uploads, no cloud processing, no data collection. Your words stay yours&nbsp;&mdash; always.</p>
       </div>
       <div class="feature-card fade-in">
         <div class="feature-icon" aria-hidden="true">&#128640;</div>
-        <h3>Efficient</h3>
-        <p>Translate, write, and chat&nbsp;&mdash; powered by local AI. Works offline, responds instantly, and handles real tasks with structured workflows.</p>
+        <h3 data-i18n="feat_efficient_t">Efficient</h3>
+        <p data-i18n="feat_efficient_d">Translate, write, and chat&nbsp;&mdash; powered by local AI. Works offline, responds instantly, and handles real tasks with structured workflows.</p>
       </div>
     </div>
   </div>
@@ -64,28 +65,28 @@
 <section class="section">
   <div class="section-inner">
     <div class="section-header">
-      <h2>How It Works</h2>
-      <p class="section-subtitle">Everything happens on your machine. Nothing goes to the cloud.</p>
+      <h2 data-i18n="how_title">How It Works</h2>
+      <p class="section-subtitle" data-i18n="how_subtitle">Everything happens on your machine. Nothing goes to the cloud.</p>
     </div>
     <div class="diagram fade-in">
       <div class="diagram-node">
         <span class="diagram-icon" aria-hidden="true">&#128187;</span>
-        <span>Your Device</span>
+        <span data-i18n="diag_device">Your Device</span>
       </div>
       <span class="diagram-arrow" aria-hidden="true">&rarr;</span>
       <div class="diagram-node">
         <span class="diagram-icon" aria-hidden="true">&#129504;</span>
-        <span>Local AI Model</span>
+        <span data-i18n="diag_model">Local AI Model</span>
       </div>
       <span class="diagram-arrow" aria-hidden="true">&rarr;</span>
       <div class="diagram-node">
         <span class="diagram-icon" aria-hidden="true">&#128221;</span>
-        <span>Results</span>
+        <span data-i18n="diag_results">Results</span>
       </div>
       <span class="diagram-arrow cross" aria-hidden="true">&#10005;</span>
       <div class="diagram-node crossed">
         <span class="diagram-icon" aria-hidden="true">&#9729;&#65039;</span>
-        <span>Cloud</span>
+        <span data-i18n="diag_cloud">Cloud</span>
       </div>
     </div>
   </div>
@@ -95,19 +96,19 @@
 <section class="section section-alt">
   <div class="section-inner">
     <div class="section-header">
-      <h2>Our Story</h2>
+      <h2 data-i18n="story_title">Our Story</h2>
     </div>
     <div class="story-grid">
       <div class="story-block fade-in">
-        <h3>Who We Are</h3>
-        <blockquote>We&rsquo;re not a big tech company. We&rsquo;re a small team that believes AI should be helpful, not creepy.<br><br>Too many AI tools ask you to upload your private documents to the cloud&nbsp;&mdash; where you lose control.<br><br>So we built Cove differently: a small, powerful language model that runs entirely on your device. No uploads. No spying. Just fast, private writing help, right where you need it.</blockquote>
+        <h3 data-i18n="story_who_t">Who We Are</h3>
+        <blockquote data-i18n-html="story_who_d">We&rsquo;re not a big tech company. We&rsquo;re a small team that believes AI should be helpful, not creepy.<br><br>Too many AI tools ask you to upload your private documents to the cloud&nbsp;&mdash; where you lose control.<br><br>So we built Cove differently: a small, powerful language model that runs entirely on your device. No uploads. No spying. Just fast, private writing help, right where you need it.</blockquote>
       </div>
       <div class="story-block fade-in">
-        <h3>Why &ldquo;Cove&rdquo;?</h3>
-        <blockquote>A cove is a small, sheltered bay&nbsp;&mdash; a safe place away from the open sea. That&rsquo;s exactly what we want your device to become: a private, peaceful spot where you can write anything, from a quick email to a legal contract, knowing your words stay yours.</blockquote>
+        <h3 data-i18n="story_why_t">Why &ldquo;Cove&rdquo;?</h3>
+        <blockquote data-i18n-html="story_why_d">A cove is a small, sheltered bay&nbsp;&mdash; a safe place away from the open sea. That&rsquo;s exactly what we want your device to become: a private, peaceful spot where you can write anything, knowing your words stay yours.</blockquote>
         <br>
-        <h3>Why a Beaver?</h3>
-        <blockquote>Beavers build. Reliably, patiently, carefully. That&rsquo;s how we build Cove&nbsp;&mdash; and how we hope you&rsquo;ll use it: to build your ideas, one word at a time.</blockquote>
+        <h3 data-i18n="story_beaver_t">Why a Beaver?</h3>
+        <blockquote data-i18n-html="story_beaver_d">Beavers build. Reliably, patiently, carefully. That&rsquo;s how we build Cove&nbsp;&mdash; and how we hope you&rsquo;ll use it: to build your ideas, one word at a time.</blockquote>
       </div>
     </div>
   </div>
@@ -117,15 +118,42 @@
 <section class="section section-dark">
   <div class="section-inner">
     <div class="section-header">
-      <h2>Our Mission</h2>
+      <h2 data-i18n="mission_title">Our Mission</h2>
     </div>
-    <p class="mission-statement fade-in">Make AI simple, safe, and efficient for every ordinary person.</p>
-    <p class="mission-sub fade-in">No tech jargon. No cloud privacy risks. Just a tool that sits quietly on your device, ready to help you write&nbsp;&mdash; whenever you need it, wherever you are.</p>
+    <p class="mission-statement fade-in" data-i18n="mission_stmt">Make AI simple, safe, and efficient for every ordinary person.</p>
+    <p class="mission-sub fade-in" data-i18n="mission_sub">No tech jargon. No cloud privacy risks. Just a tool that sits quietly on your device, ready to help you write&nbsp;&mdash; whenever you need it, wherever you are.</p>
     <div class="mission-tags fade-in">
-      <span class="mission-tag">Simple</span>
-      <span class="mission-tag">Safe</span>
-      <span class="mission-tag">On-device</span>
-      <span class="mission-tag">For everyone</span>
+      <span class="mission-tag" data-i18n="mt_simple">Simple</span>
+      <span class="mission-tag" data-i18n="mt_safe">Safe</span>
+      <span class="mission-tag" data-i18n="mt_device">On-device</span>
+      <span class="mission-tag" data-i18n="mt_everyone">For everyone</span>
+    </div>
+  </div>
+</section>
+
+<!-- Contact -->
+<section id="contact" class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header">
+      <h2 data-i18n="contact_title">Contact Us</h2>
+      <p class="section-subtitle" data-i18n="contact_subtitle">Have questions or feedback? We'd love to hear from you.</p>
+    </div>
+    <div class="contact-grid fade-in">
+      <div class="contact-card">
+        <div class="contact-icon" aria-hidden="true">&#9993;</div>
+        <h3 data-i18n="contact_email_t">Email</h3>
+        <p>hello@cove.ai</p>
+      </div>
+      <div class="contact-card">
+        <div class="contact-icon" aria-hidden="true">&#128172;</div>
+        <h3 data-i18n="contact_social_t">Social</h3>
+        <p data-i18n="contact_social_d">Coming soon</p>
+      </div>
+      <div class="contact-card">
+        <div class="contact-icon" aria-hidden="true">&#128205;</div>
+        <h3 data-i18n="contact_address_t">Address</h3>
+        <p data-i18n="contact_address_d">TBD</p>
+      </div>
     </div>
   </div>
 </section>
@@ -138,19 +166,23 @@
       Cove
     </div>
     <div class="footer-links">
-      <a href="/">Home</a>
-      <a href="/app">App</a>
-      <a href="/privacy">Privacy</a>
+      <a href="/" data-i18n="footer_home">Home</a>
+      <a href="/app" data-i18n="footer_app">App</a>
+      <a href="/privacy" data-i18n="footer_privacy">Privacy</a>
     </div>
-    <span class="footer-copy">&copy; 2026 Cove. All rights reserved.</span>
+    <span class="footer-copy" data-i18n="footer_copy">&copy; 2026 Cove. All rights reserved.</span>
   </div>
 </footer>
 
+<script src="/static/i18n.js"></script>
 <script>
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+initLangSwitcher();
+applyI18n();
+// Scroll animations
+var observer = new IntersectionObserver(function(entries) {
+  entries.forEach(function(e) { if (e.isIntersecting) e.target.classList.add('visible'); });
 }, { threshold: 0.15 });
-document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+document.querySelectorAll('.fade-in').forEach(function(el) { observer.observe(el); });
 </script>
 </body>
 </html>
