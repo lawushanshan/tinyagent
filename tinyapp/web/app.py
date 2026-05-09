@@ -33,8 +33,16 @@ def create_app():
     # ── 页面 ──
 
     @app.route("/")
-    def index():
+    def landing():
+        return render_template("landing.html")
+
+    @app.route("/app")
+    def app_page():
         return render_template("index.html")
+
+    @app.route("/privacy")
+    def privacy():
+        return render_template("privacy.html")
 
     # ── API ──
 
