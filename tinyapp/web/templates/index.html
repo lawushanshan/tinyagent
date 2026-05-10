@@ -239,6 +239,7 @@ function toggleToneRow() {
 }
 
 var MAX_CHARS = 4000;
+var HARD_LIMIT = 50000;
 
 function updateCharCount() {
   var textarea = document.getElementById('input-rewrite-text');
@@ -249,8 +250,16 @@ function updateCharCount() {
     el.className = 'char-count';
     return;
   }
-  el.textContent = t('char_count').replace('{n}', len).replace('{max}', MAX_CHARS);
-  el.className = len > MAX_CHARS ? 'char-count warn' : 'char-count';
+  if (len > HARD_LIMIT) {
+    el.textContent = t('char_count').replace('{n}', len).replace('{max}', HARD_LIMIT);
+    el.className = 'char-count warn';
+  } else if (len > MAX_CHARS) {
+    el.textContent = t('long_text_hint').replace('{n}', len);
+    el.className = 'char-count';
+  } else {
+    el.textContent = t('char_count').replace('{n}', len).replace('{max}', MAX_CHARS);
+    el.className = 'char-count';
+  }
 }
 
 function handleFileUpload(event) {
@@ -306,9 +315,9 @@ function _parseFileOnServer(file) {
 
 function _fillTextarea(content) {
   var textarea = document.getElementById('input-rewrite-text');
-  if (content.length > MAX_CHARS) {
-    textarea.value = content.substring(0, MAX_CHARS);
-    alert(t('file_truncated').replace('{max}', MAX_CHARS));
+  if (content.length > HARD_LIMIT) {
+    textarea.value = content.substring(0, HARD_LIMIT);
+    alert(t('file_truncated').replace('{max}', HARD_LIMIT));
   } else {
     textarea.value = content;
   }
@@ -397,8 +406,8 @@ function buildInput() {
   }
   if (currentTask.name === '改写') {
     var text = document.getElementById('input-rewrite-text').value.trim();
-    if (text.length > MAX_CHARS) {
-      text = text.substring(0, MAX_CHARS);
+    if (text.length > HARD_LIMIT) {
+      text = text.substring(0, HARD_LIMIT);
     }
     var op = document.getElementById('input-rewrite-op').value;
     var rwLang = document.getElementById('input-rewrite-lang').value;
