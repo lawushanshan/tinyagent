@@ -27,8 +27,7 @@ TRANSLATE_TASK.steps = [
     StepDef(
         name="翻译",
         description="执行翻译",
-        system_prompt="""你是专业翻译。将用户提供的文本翻译为指定的目标语言，保持原文的语气、风格和格式。直接输出JSON。
-示例：{"translated_text":"翻译结果"}""",
+        system_prompt="""你是专业翻译。将用户提供的文本翻译为指定的目标语言，保持原文的语气、风格和格式。""",
         output_model=TranslationOutput,
         model_role="translator",
     ),
@@ -41,8 +40,7 @@ TRANSLATE_TASK.steps = [
 3. 术语是否准确一致
 4. 语气风格是否与原文匹配
 
-给出最终定稿、质量评分和详细审查意见。直接输出JSON。
-示例：{"final_text":"最终翻译","quality_score":5,"corrections":[],"issues":[]}""",
+给出最终定稿、质量评分和详细审查意见。""",
         output_model=ReviewOutput,
         model_role="reviewer",
     ),

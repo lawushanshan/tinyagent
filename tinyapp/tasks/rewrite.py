@@ -33,12 +33,11 @@ REWRITE_TASK.steps = [
 操作类型说明：
 - 扩写：补充细节和论述，丰富内容，保持原意
 - 缩写：精简压缩，保留核心要点，去除冗余
-- 改写：换种表达方式重写，可调整语气（正式/亲切/简洁等），或用于降重
+- 改写：换种表达方式重写，可调整语气（正式/亲切/简洁/幽默等），或用于降重
 - 纠错：修正语法、拼写、标点、用词错误，保持原文风格
 - 续写：基于原文内容和风格继续往下写，自然衔接
 
-必须输出完整的改写后文本。直接输出JSON。
-示例：{"content":"改写后的完整文本","word_count":150,"changes":["改动说明"]}""",
+必须输出完整的改写后文本。""",
         output_model=RewriteOutput,
         model_role="executor",
     ),
@@ -50,8 +49,7 @@ REWRITE_TASK.steps = [
 2. 语句是否通顺自然，逻辑是否连贯
 3. 与原文的关系是否合理（该保留的保留，该调整的调整）
 
-给出最终定稿、质量评分和问题说明。直接输出JSON。
-示例：{"final_content":"最终文本","quality_score":5,"issues":[]}""",
+给出最终定稿、质量评分和问题说明。""",
         output_model=ReviewOutput,
         model_role="reviewer",
     ),
@@ -68,8 +66,25 @@ def collect_input() -> str:
     op = input("  选择操作（输入名称或编号）: ").strip()
     op_map = {str(i): name for i, (name, _) in enumerate(ops, 1)}
     op_name = op_map.get(op, op)
+
+    tone = ""
+    if op_name == "改写":
+        print("\n  语气风格：")
+        tones = [("正式", "商务、公文、学术"), ("亲切", "日常、社交媒体"),
+                 ("简洁", "精炼表达"), ("生动", "比喻和描写"),
+                 ("学术", "论文、研究报告"), ("幽默", "轻松诙谐")]
+        for i, (name, desc) in enumerate(tones, 1):
+            print(f"    {i}. {name} — {desc}")
+        tone_input = input("  选择语气（输入名称或编号，回车跳过）: ").strip()
+        tone_map = {str(i): name for i, (name, _) in enumerate(tones, 1)}
+        tone = tone_map.get(tone_input, tone_input)
+
     text = input("  请输入要改写的文本: ").strip()
-    return f"操作类型：{op_name}\n\n原文：\n{text}"
+    prompt = f"操作类型：{op_name}"
+    if tone:
+        prompt += f"\n语气：{tone}"
+    prompt += f"\n\n原文：\n{text}"
+    return prompt
 
 
 REWRITE_TASK.collect_input = collect_input

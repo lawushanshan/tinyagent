@@ -211,6 +211,7 @@ python eval_run.py --task 翻译
 # 指定任务 + 标签（用于对比不同 prompt / 模型的效果）
 python eval_run.py --task 翻译 --label "baseline"
 python eval_run.py --task 翻译 --label "prompt-v2"
+python eval_run.py --task 改写 --label "baseline"
 
 # 快速验证（只跑前 N 条）
 python eval_run.py -n 2

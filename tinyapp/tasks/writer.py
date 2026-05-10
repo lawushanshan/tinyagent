@@ -36,8 +36,7 @@ WRITER_TASK.steps = [
     StepDef(
         name="需求分析",
         description="分析写作需求",
-        system_prompt="""你是写作需求分析师。分析用户需求，提取写作要素。直接输出JSON，不要多余文字。
-示例：{"doc_type":"邮件","tone":"正式","audience":"客户","key_points":["感谢合作"],"length_hint":"中等"}""",
+        system_prompt="""你是写作需求分析师。分析用户需求，提取写作要素。""",
         output_model=RequirementOutput,
         model_role="executor",
     ),
@@ -52,10 +51,7 @@ WRITER_TASK.steps = [
 - 报告/总结类：必须有标题、分段论述、结论
 - 通知类：必须包含标题、正文、落款和日期
 - 方案类：必须有目标、步骤、预期成果
-- content 字段包含完整排版好的全文，使用换行符分段
-
-直接输出JSON。
-示例：{"title":"标题","content":"完整正文内容","word_count":200}""",
+- content 字段包含完整排版好的全文，使用换行符分段""",
         output_model=DraftOutput,
         model_role="executor",
     ),
@@ -68,8 +64,7 @@ WRITER_TASK.steps = [
 3. 语气风格是否一致
 4. 是否遗漏了关键要点
 
-给出最终定稿、质量评分和改进说明。直接输出JSON。
-示例：{"final_title":"标题","final_content":"正文","quality_score":5,"improvements":[]}""",
+给出最终定稿、质量评分和改进说明。""",
         output_model=PolishOutput,
         model_role="reviewer",
     ),

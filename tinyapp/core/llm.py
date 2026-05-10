@@ -12,6 +12,29 @@ def _load_config() -> dict:
         return yaml.safe_load(f)
 
 
+def _clean_schema(schema: dict) -> dict:
+    """清理 Pydantic schema，只保留 llama-server grammar 引擎支持的字段。
+
+    移除 title/description/default 等字段，补充 additionalProperties: false，
+    避免 grammar 编译卡死。
+    """
+    allowed = {"type", "properties", "required", "items", "enum",
+               "minimum", "maximum", "additionalProperties", "anyOf", "oneOf"}
+    cleaned = {}
+    for k, v in schema.items():
+        if k not in allowed:
+            continue
+        if k == "properties":
+            cleaned[k] = {name: _clean_schema(prop) for name, prop in v.items()}
+        elif k == "items" and isinstance(v, dict):
+            cleaned[k] = _clean_schema(v)
+        else:
+            cleaned[k] = v
+    if schema.get("type") == "object" and "additionalProperties" not in cleaned:
+        cleaned["additionalProperties"] = False
+    return cleaned
+
+
 class LLMClient:
     """单个 LLM 客户端"""
 
@@ -51,10 +74,11 @@ class LLMClient:
             "stream": False,
         }
         if format_schema:
+            clean_schema = _clean_schema(format_schema)
             kwargs["response_format"] = {
                 "type": "json_schema",
                 "json_schema": {
-                    "schema": format_schema,
+                    "schema": clean_schema,
                     "name": "output",
                     "strict": True,
                 },

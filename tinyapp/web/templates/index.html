@@ -72,7 +72,11 @@
     <textarea id="input-rewrite-text" data-i18n-placeholder="placeholder_rewrite" placeholder="Paste the text you want to rewrite..." rows="5"></textarea>
     <div class="form-row">
       <label for="input-rewrite-op" data-i18n="label_rewrite_op">Operation</label>
-      <select id="input-rewrite-op"></select>
+      <select id="input-rewrite-op" onchange="toggleToneRow()"></select>
+    </div>
+    <div id="row-rewrite-tone" class="form-row hidden">
+      <label for="input-rewrite-tone" data-i18n="label_tone">Tone</label>
+      <select id="input-rewrite-tone"></select>
     </div>
     <div class="form-row">
       <label for="input-rewrite-lang" data-i18n="label_write_lang">Output Language</label>
@@ -147,6 +151,7 @@ function applyLang() {
   renderWriteLangOptions();
   renderRewriteOptions();
   renderRewriteLangOptions();
+  renderToneOptions();
   if (tasks.length) renderCards(tasks);
   if (Object.keys(lastStatus).length) renderStatus(lastStatus);
 }
@@ -200,6 +205,32 @@ function renderRewriteOptions() {
   sel.innerHTML = ops.map(function(o) {
     return '<option value="' + o.value + '">' + t(o.key) + '</option>';
   }).join('');
+  renderToneOptions();
+}
+
+function renderToneOptions() {
+  var sel = document.getElementById('input-rewrite-tone');
+  var tones = [
+    { value: '正式', key: 'tone_formal' },
+    { value: '亲切', key: 'tone_friendly' },
+    { value: '简洁', key: 'tone_concise' },
+    { value: '生动', key: 'tone_vivid' },
+    { value: '学术', key: 'tone_academic' },
+    { value: '幽默', key: 'tone_humorous' },
+  ];
+  sel.innerHTML = tones.map(function(o) {
+    return '<option value="' + o.value + '">' + t(o.key) + '</option>';
+  }).join('');
+}
+
+function toggleToneRow() {
+  var op = document.getElementById('input-rewrite-op').value;
+  var row = document.getElementById('row-rewrite-tone');
+  if (op === '改写') {
+    row.classList.remove('hidden');
+  } else {
+    row.classList.add('hidden');
+  }
 }
 
 function renderRewriteLangOptions() {
@@ -288,7 +319,13 @@ function buildInput() {
     var rwLang = document.getElementById('input-rewrite-lang').value;
     var rwLangName = SUPPORTED_LANGS.find(function(l) { return l.code === rwLang; });
     var rwLangStr = rwLangName ? rwLangName.name : rwLang;
-    return '操作类型：' + op + '\n输出语言：' + rwLangStr + '（' + rwLang + '）\n\n原文：\n' + text;
+    var prompt = '操作类型：' + op;
+    if (op === '改写') {
+      var tone = document.getElementById('input-rewrite-tone').value;
+      prompt += '\n语气：' + tone;
+    }
+    prompt += '\n输出语言：' + rwLangStr + '（' + rwLang + '）\n\n原文：\n' + text;
+    return prompt;
   }
   return '';
 }

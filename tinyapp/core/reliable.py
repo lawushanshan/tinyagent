@@ -32,12 +32,14 @@ def reliable_call(
     temperature: float = 0,
 ) -> BaseModel:
     schema = output_model.model_json_schema()
-    schema_str = json.dumps(schema, ensure_ascii=False, indent=2)
 
-    original_last_msg = messages[-1]["content"]
-    fields_desc = _schema_to_brief(schema)
-    anchored_msg = f"{original_last_msg}\n\n请严格按以下 JSON 格式输出：\n{fields_desc}"
-    messages[-1] = {"role": "user", "content": anchored_msg}
+    # 在 system 消息末尾追加精简字段提示（帮助小模型理解输出结构）
+    fields = list(schema.get("properties", {}).keys())
+    if fields:
+        for msg in messages:
+            if msg.get("role") == "system":
+                msg["content"] += f"\n输出字段：{', '.join(fields)}"
+                break
 
     last_error = None
     total_start = time.time()
@@ -132,12 +134,12 @@ def reliable_call_json(
 
 def _append_retry_feedback(messages: list[dict], prev_content: str, error: str):
     """将验证错误反馈追加到消息列表，让 LLM 自我纠正"""
-    # 截断错误信息，避免 prompt 过长
     error_brief = error[:200] if len(error) > 200 else error
-    messages.append({"role": "assistant", "content": prev_content})
+    truncated = prev_content[:100] if len(prev_content) > 100 else prev_content
+    messages.append({"role": "assistant", "content": truncated})
     messages.append({
         "role": "user",
-        "content": f"输出验证失败：{error_brief}\n请修正后重新输出有效 JSON。",
+        "content": f"格式有误：{error_brief}\n请重新输出。",
     })
 
 
