@@ -69,7 +69,12 @@
   <!-- 改写输入 -->
   <div id="form-rewrite" class="form-group hidden">
     <label for="input-rewrite-text" class="sr-only">Text to rewrite</label>
-    <textarea id="input-rewrite-text" data-i18n-placeholder="placeholder_rewrite" placeholder="Paste the text you want to rewrite..." rows="5"></textarea>
+    <div class="textarea-toolbar">
+      <input type="file" id="input-rewrite-file" accept=".txt" class="hidden" onchange="handleFileUpload(event)">
+      <button class="btn-upload" onclick="document.getElementById('input-rewrite-file').click()">&#128196; <span data-i18n="btn_upload_file">Upload .txt</span></button>
+      <span id="rewrite-char-count" class="char-count"></span>
+    </div>
+    <textarea id="input-rewrite-text" data-i18n-placeholder="placeholder_rewrite" placeholder="Paste the text you want to rewrite..." rows="5" oninput="updateCharCount()"></textarea>
     <div class="form-row">
       <label for="input-rewrite-op" data-i18n="label_rewrite_op">Operation</label>
       <select id="input-rewrite-op" onchange="toggleToneRow()"></select>
@@ -233,6 +238,47 @@ function toggleToneRow() {
   }
 }
 
+var MAX_CHARS = 4000;
+
+function updateCharCount() {
+  var textarea = document.getElementById('input-rewrite-text');
+  var el = document.getElementById('rewrite-char-count');
+  var len = textarea.value.length;
+  if (len === 0) {
+    el.textContent = '';
+    el.className = 'char-count';
+    return;
+  }
+  el.textContent = t('char_count').replace('{n}', len).replace('{max}', MAX_CHARS);
+  el.className = len > MAX_CHARS ? 'char-count warn' : 'char-count';
+}
+
+function handleFileUpload(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+
+  if (!file.name.endsWith('.txt')) {
+    alert(t('file_not_txt'));
+    event.target.value = '';
+    return;
+  }
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var content = e.target.result;
+    var textarea = document.getElementById('input-rewrite-text');
+    if (content.length > MAX_CHARS) {
+      textarea.value = content.substring(0, MAX_CHARS);
+      alert(t('file_truncated').replace('{max}', MAX_CHARS));
+    } else {
+      textarea.value = content;
+    }
+    updateCharCount();
+  };
+  reader.readAsText(file, 'UTF-8');
+  event.target.value = '';
+}
+
 function renderRewriteLangOptions() {
   var sel = document.getElementById('input-rewrite-lang');
   var cur = currentLang();
@@ -315,6 +361,9 @@ function buildInput() {
   }
   if (currentTask.name === '改写') {
     var text = document.getElementById('input-rewrite-text').value.trim();
+    if (text.length > MAX_CHARS) {
+      text = text.substring(0, MAX_CHARS);
+    }
     var op = document.getElementById('input-rewrite-op').value;
     var rwLang = document.getElementById('input-rewrite-lang').value;
     var rwLangName = SUPPORTED_LANGS.find(function(l) { return l.code === rwLang; });

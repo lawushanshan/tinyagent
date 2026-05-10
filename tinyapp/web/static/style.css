@@ -282,6 +282,35 @@ body {
   margin-bottom: 0;
 }
 
+.textarea-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.btn-upload {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-family: inherit;
+  transition: all var(--transition);
+}
+
+.btn-upload:hover { border-color: var(--primary); color: var(--primary); }
+
+.char-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.char-count.warn { color: var(--gold); font-weight: 500; }
+
 /* ── 步骤进度 ── */
 
 .progress-area { margin-top: 20px; }
