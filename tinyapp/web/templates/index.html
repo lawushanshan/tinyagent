@@ -70,8 +70,8 @@
   <div id="form-rewrite" class="form-group hidden">
     <label for="input-rewrite-text" class="sr-only">Text to rewrite</label>
     <div class="textarea-toolbar">
-      <input type="file" id="input-rewrite-file" accept=".txt" class="hidden" onchange="handleFileUpload(event)">
-      <button class="btn-upload" onclick="document.getElementById('input-rewrite-file').click()">&#128196; <span data-i18n="btn_upload_file">Upload .txt</span></button>
+      <input type="file" id="input-rewrite-file" accept=".txt,.docx,.pdf" class="hidden" onchange="handleFileUpload(event)">
+      <button id="btn-upload-rewrite" class="btn-upload" onclick="document.getElementById('input-rewrite-file').click()">&#128196; <span data-i18n="btn_upload_file">Upload file</span></button>
       <span id="rewrite-char-count" class="char-count"></span>
     </div>
     <textarea id="input-rewrite-text" data-i18n-placeholder="placeholder_rewrite" placeholder="Paste the text you want to rewrite..." rows="5" oninput="updateCharCount()"></textarea>
@@ -257,26 +257,62 @@ function handleFileUpload(event) {
   var file = event.target.files[0];
   if (!file) return;
 
-  if (!file.name.endsWith('.txt')) {
-    alert(t('file_not_txt'));
+  var name = file.name.toLowerCase();
+  var isText = name.endsWith('.txt');
+  var needsParsing = name.endsWith('.docx') || name.endsWith('.pdf');
+
+  if (!isText && !needsParsing) {
+    alert(t('file_not_supported'));
     event.target.value = '';
     return;
   }
 
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var content = e.target.result;
-    var textarea = document.getElementById('input-rewrite-text');
-    if (content.length > MAX_CHARS) {
-      textarea.value = content.substring(0, MAX_CHARS);
-      alert(t('file_truncated').replace('{max}', MAX_CHARS));
-    } else {
-      textarea.value = content;
-    }
-    updateCharCount();
-  };
-  reader.readAsText(file, 'UTF-8');
+  if (isText) {
+    var reader = new FileReader();
+    reader.onload = function(e) { _fillTextarea(e.target.result); };
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    _parseFileOnServer(file);
+  }
   event.target.value = '';
+}
+
+function _parseFileOnServer(file) {
+  var btn = document.getElementById('btn-upload-rewrite');
+  var originalLabel = btn.querySelector('span').textContent;
+  btn.querySelector('span').textContent = t('btn_parsing');
+  btn.disabled = true;
+
+  var fd = new FormData();
+  fd.append('file', file);
+
+  fetch('/api/parse-file', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) {
+        alert(data.error);
+      } else {
+        _fillTextarea(data.text);
+      }
+    })
+    .catch(function() {
+      alert(t('file_parse_error'));
+    })
+    .finally(function() {
+      btn.querySelector('span').textContent = originalLabel;
+      btn.disabled = false;
+    });
+}
+
+function _fillTextarea(content) {
+  var textarea = document.getElementById('input-rewrite-text');
+  if (content.length > MAX_CHARS) {
+    textarea.value = content.substring(0, MAX_CHARS);
+    alert(t('file_truncated').replace('{max}', MAX_CHARS));
+  } else {
+    textarea.value = content;
+  }
+  updateCharCount();
 }
 
 function renderRewriteLangOptions() {

@@ -20,6 +20,7 @@ from tasks.languages import get_lang_name, get_lang_code, get_lang_options
 def create_app():
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.secret_key = "tinyapp-secret-key"
+    app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10MB
 
     pool = LLMPool()
     engine = WorkflowEngine(pool)
@@ -77,6 +78,29 @@ def create_app():
     @app.route("/api/languages")
     def api_languages():
         return jsonify([{"code": code, "name": name} for code, name in get_lang_options()])
+
+    # ── 文件解析 ──
+
+    @app.route("/api/parse-file", methods=["POST"])
+    def api_parse_file():
+        file = request.files.get("file")
+        if not file:
+            return jsonify({"error": "未选择文件"}), 400
+
+        filename = (file.filename or "").lower()
+        try:
+            if filename.endswith(".txt"):
+                text = file.read().decode("utf-8")
+            elif filename.endswith(".docx"):
+                text = _parse_docx(file)
+            elif filename.endswith(".pdf"):
+                text = _parse_pdf(file)
+            else:
+                return jsonify({"error": "不支持的文件格式，请上传 .txt/.docx/.pdf 文件"}), 400
+        except Exception as e:
+            return jsonify({"error": f"文件解析失败: {e}"}), 500
+
+        return jsonify({"text": text, "filename": file.filename, "length": len(text)})
 
     # ── Workflow 执行（SSE 流式） ──
 
@@ -245,6 +269,20 @@ def _build_system_prompt(memory: Memory) -> str:
 
 {memory.get_context()}"""
     return prompt
+
+
+def _parse_docx(file_storage):
+    from docx import Document
+    doc = Document(file_storage)
+    return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+
+
+def _parse_pdf(file_storage):
+    import fitz
+    doc = fitz.open(stream=file_storage.read(), filetype="pdf")
+    text = "\n".join(page.get_text() for page in doc)
+    doc.close()
+    return text
 
 
 def _safe_serialize(obj):
