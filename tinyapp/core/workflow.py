@@ -6,6 +6,7 @@
 import json
 import os
 import time
+import uuid
 from typing import Optional
 
 from pydantic import BaseModel
@@ -130,6 +131,9 @@ class WorkflowEngine:
 
         system = step["system_prompt"]
         system += f"\n\n当前是第 {step_num}/{total_steps} 步。"
+        # 注入唯一请求 ID，打破 llama-server LCP KV 缓存匹配
+        # 避免跨任务方向切换（如 en→zh → zh→en）时因缓存复用导致 500 错误
+        system += f"\n[rid:{uuid.uuid4().hex[:8]}]"
         messages.append({"role": "system", "content": system})
 
         # 前序步骤上下文（摘要）
