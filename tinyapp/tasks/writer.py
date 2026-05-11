@@ -2,17 +2,18 @@
 #
 # 模型分配：executor(快速) 执行分析和起草，reviewer(深度) 做润色评分
 
+from typing import Annotated
 from pydantic import BaseModel, Field
 
 from .base import WorkflowTask, StepDef
 
 
 class RequirementOutput(BaseModel):
-    doc_type: str = Field(description="文档类型")
-    tone: str = Field(description="语气风格")
-    audience: str = Field(description="目标读者")
-    key_points: list[str] = Field(description="关键要点，最多5个")
-    length_hint: str = Field(description="建议篇幅")
+    doc_type: str = Field(description="文档类型", max_length=20)
+    tone: str = Field(description="语气风格", max_length=20)
+    audience: str = Field(description="目标读者", max_length=30)
+    key_points: Annotated[list[str], Field(description="关键要点", max_length=5)] = []
+    length_hint: str = Field(description="建议篇幅", max_length=30)
 
 
 class DraftOutput(BaseModel):
@@ -22,10 +23,10 @@ class DraftOutput(BaseModel):
 
 
 class PolishOutput(BaseModel):
-    final_title: str = Field(description="最终标题")
+    final_title: str = Field(description="最终标题", max_length=100)
     final_content: str = Field(description="最终正文")
     quality_score: int = Field(description="质量评分1-5", ge=1, le=5)
-    improvements: list[str] = Field(description="润色改进说明，没有则为空")
+    improvements: Annotated[list[str], Field(description="润色改进说明，没有则为空", max_length=5)] = []
 
 
 WRITER_TASK = WorkflowTask()

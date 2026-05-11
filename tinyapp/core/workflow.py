@@ -87,6 +87,7 @@ class WorkflowEngine:
                     llm=llm,
                     messages=messages,
                     output_model=output_model,
+                    max_tokens=step.get("max_tokens"),
                 )
                 step_data = result.model_dump()
                 step_outputs[step_name] = step_data

@@ -27,7 +27,8 @@ def _clean_schema(schema: dict) -> dict:
     避免 grammar 编译卡死。
     """
     allowed = {"type", "properties", "required", "items", "enum",
-               "minimum", "maximum", "additionalProperties", "anyOf", "oneOf"}
+               "minimum", "maximum", "additionalProperties", "anyOf", "oneOf",
+               "maxLength", "maxItems"}
     cleaned = {}
     for k, v in schema.items():
         if k not in allowed:
@@ -46,11 +47,12 @@ def _clean_schema(schema: dict) -> dict:
 class LLMClient:
     """单个 LLM 客户端"""
 
-    def __init__(self, base_url: str, model: str, timeout: int = 120, no_think: bool = False):
+    def __init__(self, base_url: str, model: str, timeout: int = 120, no_think: bool = False, context_window: int = 4096):
         self.base_url = base_url
         self.model = model
         self.timeout = timeout
         self.no_think = no_think
+        self.context_window = context_window
         self.client = OpenAI(
             base_url=base_url,
             api_key="ollama",
@@ -70,6 +72,7 @@ class LLMClient:
         tools: list[dict] = None,
         format_schema: dict = None,
         temperature: float = 0,
+        max_tokens: int = None,
     ) -> dict:
         # 如果 no_think 模式，在 system 消息前插入 /no_think 指令
         if self.no_think:
@@ -81,6 +84,15 @@ class LLMClient:
             "temperature": temperature,
             "stream": False,
         }
+
+        if max_tokens is not None:
+            kwargs["max_tokens"] = max_tokens
+        else:
+            # 根据上下文窗口自动计算 max_tokens
+            prompt_tokens = sum(estimate_tokens(m.get("content", "")) for m in messages)
+            available = self.context_window - prompt_tokens - 64
+            if available > 0:
+                kwargs["max_tokens"] = available
         if format_schema:
             clean_schema = _clean_schema(format_schema)
             kwargs["response_format"] = {
@@ -139,14 +151,16 @@ class LLMPool:
         self._context_windows: dict[str, int] = {}
 
         for role, cfg in config.items():
+            ctx = cfg.get("context_window", 4096)
             self._clients[role] = LLMClient(
                 base_url=cfg["base_url"],
                 model=cfg["model"],
                 timeout=cfg.get("timeout", 120),
                 no_think=cfg.get("no_think", False),
+                context_window=ctx,
             )
             self._roles[role] = cfg["model"]
-            self._context_windows[role] = cfg.get("context_window", 4096)
+            self._context_windows[role] = ctx
 
     def get(self, role: str = "executor") -> LLMClient:
         """按角色获取 LLM 客户端"""

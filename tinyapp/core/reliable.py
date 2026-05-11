@@ -30,6 +30,7 @@ def reliable_call(
     output_model: Type[BaseModel],
     max_retries: int = 3,
     temperature: float = 0,
+    max_tokens: int = None,
 ) -> BaseModel:
     schema = output_model.model_json_schema()
 
@@ -51,6 +52,7 @@ def reliable_call(
             messages=messages,
             format_schema=schema,
             temperature=temperature,
+            max_tokens=max_tokens,
         )
         elapsed = time.time() - t0
         content = response["content"]

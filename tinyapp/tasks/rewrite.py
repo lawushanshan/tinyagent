@@ -3,6 +3,7 @@
 # 支持：扩写、缩写、改写/调语气、纠错、续写
 # 模型分配：executor(快速) 执行改写，reviewer(深度) 做审校
 
+from typing import Annotated
 from pydantic import BaseModel, Field
 
 from .base import WorkflowTask, StepDef
@@ -11,12 +12,12 @@ from .base import WorkflowTask, StepDef
 class RewriteOutput(BaseModel):
     content: str = Field(description="改写后的完整文本")
     word_count: int = Field(description="改写后字数")
-    changes: list[str] = Field(description="主要改动说明，最多3条")
+    changes: Annotated[list[str], Field(description="主要改动说明", max_length=3)] = []
 
 
 class ReviewOutput(BaseModel):
     quality_score: int = Field(description="质量评分1-5", ge=1, le=5)
-    issues: list[str] = Field(description="发现的问题，没有则为空")
+    issues: Annotated[list[str], Field(description="发现的问题，没有则为空", max_length=5)] = []
 
 
 REWRITE_TASK = WorkflowTask()

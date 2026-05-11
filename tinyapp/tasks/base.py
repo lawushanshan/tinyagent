@@ -14,12 +14,14 @@ class StepDef:
         system_prompt: str,
         output_model: Type[BaseModel],
         model_role: str = "executor",
+        max_tokens: int = None,
     ):
         self.name = name
         self.description = description
         self.system_prompt = system_prompt
         self.output_model = output_model
         self.model_role = model_role  # "executor" 或 "reviewer"
+        self.max_tokens = max_tokens
 
     def to_dict(self) -> dict:
         return {
@@ -28,6 +30,7 @@ class StepDef:
             "system_prompt": self.system_prompt,
             "output_model": self.output_model,
             "model_role": self.model_role,
+            "max_tokens": self.max_tokens,
         }
 
 

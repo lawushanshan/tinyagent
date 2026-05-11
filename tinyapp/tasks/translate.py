@@ -2,6 +2,7 @@
 #
 # 模型分配：translator(HY-MT1.5 翻译专用) 执行翻译，reviewer(深度思考) 做校对评分
 
+from typing import Annotated
 from pydantic import BaseModel, Field
 
 from .base import WorkflowTask, StepDef
@@ -15,8 +16,8 @@ class TranslationOutput(BaseModel):
 class ReviewOutput(BaseModel):
     final_text: str = Field(description="最终翻译")
     quality_score: int = Field(description="质量评分1-5", ge=1, le=5)
-    corrections: list[str] = Field(description="修改说明，没有则为空")
-    issues: list[str] = Field(description="发现的问题，没有则为空")
+    corrections: Annotated[list[str], Field(description="修改说明，没有则为空", max_length=5)] = []
+    issues: Annotated[list[str], Field(description="发现的问题，没有则为空", max_length=5)] = []
 
 
 TRANSLATE_TASK = WorkflowTask()
