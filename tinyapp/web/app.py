@@ -157,11 +157,23 @@ def create_app():
                         user_input=user_input,
                         on_step=on_step,
                     )
+
+                    # 改写任务：从改写步骤取正文，审校步骤取评分
+                    final_output = result.final_output
+                    if task_name == "改写" and result.success:
+                        rewrite_data = result.step_outputs.get("改写", {})
+                        review_data = result.step_outputs.get("审校", {})
+                        final_output = {
+                            "content": rewrite_data.get("content", ""),
+                            "quality_score": review_data.get("quality_score", 0),
+                            "issues": review_data.get("issues", []),
+                        }
+
                     event_queue.put({
                         "type": "result",
                         "success": result.success,
                         "error": result.error,
-                        "final_output": _safe_serialize(result.final_output),
+                        "final_output": _safe_serialize(final_output),
                         "step_outputs": _safe_serialize(result.step_outputs),
                     })
             except Exception as e:
@@ -346,10 +358,18 @@ def _run_chunked_rewrite(user_input, original_text, fast_mode, emit_step, event_
     emit_step(review_step, total_steps, "审校", "审校评分 [深度思考]", "start")
 
     reviewer = pool.get("reviewer")
-    review_system = "你是资深文字审校专家。仔细审查改写后的文本质量，逐项检查：\n1. 是否准确完成了用户要求的操作\n2. 语句是否通顺自然，逻辑是否连贯\n3. 与原文的关系是否合理\n\n给出最终定稿、质量评分和问题说明。"
+    review_system = "你是资深文字审校专家。审查改写后的文本质量，逐项检查：\n1. 是否准确完成了用户要求的操作\n2. 语句是否通顺自然，逻辑是否连贯\n3. 与原文的关系是否合理\n\n只需给出质量评分和发现的问题，不需要输出完整文本。"
+
+    # 检查合并文本是否超出审校模型上下文窗口
+    review_ctx = pool.get_context_window("reviewer")
+    review_text, sampled = _build_review_text(merged, rewritten_parts, review_ctx)
+    review_content = f"{header}\n\n改写后文本：\n{review_text}"
+    if sampled:
+        review_content += "\n\n（注：文本较长，以上为采样片段，请据此评估整体质量）"
+
     review_messages = [
         {"role": "system", "content": review_system},
-        {"role": "user", "content": f"{header}\n\n改写后文本：\n{merged}"},
+        {"role": "user", "content": review_content},
     ]
 
     try:
@@ -357,7 +377,7 @@ def _run_chunked_rewrite(user_input, original_text, fast_mode, emit_step, event_
         emit_step(review_step, total_steps, "审校", "审校评分 [深度思考]", "done")
 
         final_output = {
-            "final_content": review_result.final_content,
+            "content": merged,
             "quality_score": review_result.quality_score,
             "issues": review_result.issues,
         }
@@ -375,9 +395,31 @@ def _run_chunked_rewrite(user_input, original_text, fast_mode, emit_step, event_
             "type": "result",
             "success": True,
             "error": f"审校步骤失败: {e}",
-            "final_output": {"final_content": merged, "quality_score": 0, "issues": [str(e)]},
+            "final_output": {"content": merged, "quality_score": 0, "issues": [str(e)]},
             "step_outputs": {},
         })
+
+
+def _build_review_text(merged: str, parts: list[str], max_ctx: int) -> tuple[str, bool]:
+    """构建审校文本，超长时采样代表性片段。返回 (文本, 是否采样)。"""
+    from core.llm import estimate_tokens
+
+    estimated = estimate_tokens(merged)
+    if estimated + 500 < max_ctx:
+        return merged, False
+
+    # 采样：首段、末段、中间均匀取 1-2 段
+    if len(parts) <= 2:
+        return "\n\n".join(parts), True
+
+    samples = [parts[0]]
+    mid = len(parts) // 2
+    if mid > 0:
+        samples.append(parts[mid])
+    if len(parts) > 2:
+        samples.append(parts[-1])
+
+    return "\n\n...（省略）...\n\n".join(samples), True
 
 
 def _parse_docx(file_storage):

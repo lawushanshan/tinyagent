@@ -136,4 +136,12 @@ class EvalRunner:
                 if len(val) > 100:
                     val = val[:97] + "..."
                 return val
+        # 最终步骤无正文时，从前序步骤中查找
+        for step_data in result.step_outputs.values():
+            for key in ("content", "final_text", "final_content", "translated_text"):
+                if key in step_data:
+                    val = str(step_data[key])
+                    if len(val) > 100:
+                        val = val[:97] + "..."
+                    return val
         return str(list(output.keys()))

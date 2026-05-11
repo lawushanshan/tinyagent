@@ -8,12 +8,14 @@ llm:
     model: "hy-mt1.5-1.8b"
     timeout: 120
     temperature: 0
+    context_window: 4096
   # 执行模型（快速，非思考）— 用于分析、起草等生成步骤
   executor:
     base_url: "http://127.0.0.1:8080/v1"
     model: "qwen2.5-3b"
     timeout: 300
     temperature: 0
+    context_window: 8192
     # no_think: true          # 禁用思考模式（Qwen3.5 等支持 /no_think 的模型）
   # 评分模型（慢，带思考）— 用于校对、评分、审查等需要深度推理的步骤
   reviewer:
@@ -21,6 +23,7 @@ llm:
     model: "gemma-4-e2b"
     timeout: 180
     temperature: 0
+    context_window: 16384
 
 # 可靠性设置
 reliability:

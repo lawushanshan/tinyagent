@@ -15,7 +15,6 @@ class RewriteOutput(BaseModel):
 
 
 class ReviewOutput(BaseModel):
-    final_content: str = Field(description="最终文本")
     quality_score: int = Field(description="质量评分1-5", ge=1, le=5)
     issues: list[str] = Field(description="发现的问题，没有则为空")
 
@@ -44,12 +43,12 @@ REWRITE_TASK.steps = [
     StepDef(
         name="审校",
         description="审校评分 [深度思考]",
-        system_prompt="""你是资深文字审校专家。仔细审查改写后的文本质量，逐项检查：
+        system_prompt="""你是资深文字审校专家。审查改写后的文本质量，逐项检查：
 1. 是否准确完成了用户要求的操作（扩写/缩写/改写/纠错/续写）
 2. 语句是否通顺自然，逻辑是否连贯
 3. 与原文的关系是否合理（该保留的保留，该调整的调整）
 
-给出最终定稿、质量评分和问题说明。""",
+只需给出质量评分和发现的问题，不需要输出完整文本。""",
         output_model=ReviewOutput,
         model_role="reviewer",
     ),
@@ -94,8 +93,9 @@ def format_result(result) -> str:
     if not result.success:
         return f"[错误] {result.error}"
 
+    rewrite = result.step_outputs.get("改写", {})
     review = result.step_outputs.get("审校", {})
-    content = review.get("final_content", "")
+    content = rewrite.get("content", "")
     score = review.get("quality_score", "?")
     issues = review.get("issues", [])
 

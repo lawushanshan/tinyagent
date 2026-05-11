@@ -12,6 +12,14 @@ def _load_config() -> dict:
         return yaml.safe_load(f)
 
 
+def estimate_tokens(text: str) -> int:
+    """粗略估算 token 数（偏保守，用于上下文窗口保护）。"""
+    if not text:
+        return 0
+    chinese = sum(1 for ch in text if '一' <= ch <= '鿿')
+    return int(chinese * 1.3 + (len(text) - chinese) * 0.4)
+
+
 def _clean_schema(schema: dict) -> dict:
     """清理 Pydantic schema，只保留 llama-server grammar 引擎支持的字段。
 
@@ -128,6 +136,7 @@ class LLMPool:
         config = _load_config()["llm"]
         self._clients: dict[str, LLMClient] = {}
         self._roles: dict[str, str] = {}
+        self._context_windows: dict[str, int] = {}
 
         for role, cfg in config.items():
             self._clients[role] = LLMClient(
@@ -137,6 +146,7 @@ class LLMPool:
                 no_think=cfg.get("no_think", False),
             )
             self._roles[role] = cfg["model"]
+            self._context_windows[role] = cfg.get("context_window", 4096)
 
     def get(self, role: str = "executor") -> LLMClient:
         """按角色获取 LLM 客户端"""
@@ -144,6 +154,10 @@ class LLMPool:
         if not client:
             raise ValueError(f"未知的模型角色: {role}，可用: {list(self._clients.keys())}")
         return client
+
+    def get_context_window(self, role: str = "executor") -> int:
+        """获取指定角色的上下文窗口大小（token 数）。"""
+        return self._context_windows.get(role, 4096)
 
     def check_all(self) -> dict[str, bool]:
         """检查所有模型的连接状态"""

@@ -33,7 +33,7 @@ if not exist "D:\02Personal\gitea\tinyagent\models.ini" (
 echo.
 echo Starting model router on port 8080...
 echo.
-.\llama-server.exe --models-preset "D:\02Personal\gitea\tinyagent\models.ini" --host 127.0.0.1 --port 8080 --models-max 2
+.\llama-server.exe --models-preset "D:\02Personal\gitea\tinyagent\models.ini" --host 127.0.0.1 --port 8080 --models-max 3
 echo.
 echo [EXIT] llama-server ended with code %ERRORLEVEL%
 cmd /k

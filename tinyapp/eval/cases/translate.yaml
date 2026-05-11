@@ -8,7 +8,7 @@ cases:
     description: "简单英文→中文"
 
   - id: en-zh-tech-02
-    input: "请将以下文本翻译为中文：\n\nThe API endpoint returns a JSON response with pagination metadata."
+    input: "请将以下文本翻译为中文：\n\nThe API endpoint returns a normal response with pagination metadata."
     description: "技术术语翻译"
 
   - id: zh-en-01
