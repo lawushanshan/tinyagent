@@ -1,7 +1,7 @@
-# tasks/rewrite.py — 文本改写任务（分段改写 → 审校）
+# tasks/rewrite.py — 文本改写任务（分析 → 分段改写 → 审校）
 #
 # 支持：扩写、缩写、改写/调语气、纠错、续写
-# 模型分配：executor(快速) 执行改写，reviewer(深度) 做审校
+# 模型分配：executor(快速) 执行分析和改写，reviewer(深度) 做审校
 
 import uuid
 from typing import Annotated
@@ -11,10 +11,11 @@ from .base import WorkflowTask, StepDef
 from core.chunker import split_text
 
 
-class RewriteOutput(BaseModel):
-    content: str = Field(description="改写后的完整文本")
-    word_count: int = Field(description="改写后字数")
-    changes: Annotated[list[str], Field(description="主要改动说明", max_length=3)] = []
+class AnalysisOutput(BaseModel):
+    operation: str = Field(description="操作类型：扩写/缩写/改写/纠错/续写", max_length=10)
+    tone: str = Field(description="目标语气风格，没有要求则填'保持原文'", max_length=20)
+    key_points: Annotated[list[str], Field(description="原文核心要点，改写时必须保留", max_length=5)] = []
+    strategy: str = Field(description="改写策略：如何执行本次操作的具体方案", max_length=100)
 
 
 class ChunkOutput(BaseModel):
@@ -38,23 +39,25 @@ def _extract_rewrite_header(user_input: str) -> str:
     return user_input[:idx] if idx >= 0 else ""
 
 
-REWRITE_SYSTEM = """你是专业文字编辑。根据用户要求的操作类型对文本进行改写。
+REWRITE_SYSTEM = """你是专业文字编辑。根据分析结果和用户要求对文本进行改写。
 
-操作类型说明：
-- 扩写：补充细节和论述，丰富内容，保持原意
-- 缩写：精简压缩，保留核心要点，去除冗余
-- 改写：换种表达方式重写，可调整语气
-- 纠错：修正语法、拼写、标点、用词错误
-- 续写：基于原文内容和风格继续往下写
-
-只输出当前片段改写后的文本，不要输出其他内容。"""
+输出要求：
+- 只输出改写后的文本，不要输出原文或解释说明
+- 保持语意完整，自然收尾，不要重复输出同一内容"""
 
 
 def _segmented_rewrite_handler(engine, step: dict, state: dict) -> dict:
-    """分段改写 handler：按片段逐段改写，保持上下文连贯"""
+    """分段改写 handler：基于分析结果，按片段逐段改写，保持上下文连贯"""
+    analysis = state["steps"].get("分析", {})
     user_input = state["input"]
     original_text = _extract_original_text(user_input)
     header = _extract_rewrite_header(user_input)
+
+    # 从分析结果提取结构化信息
+    operation = analysis.get("operation", "")
+    tone = analysis.get("tone", "")
+    key_points = analysis.get("key_points", [])
+    strategy = analysis.get("strategy", "")
 
     chunks = split_text(original_text, max_chars=1500)
     rewritten_parts = []
@@ -62,12 +65,32 @@ def _segmented_rewrite_handler(engine, step: dict, state: dict) -> dict:
 
     for i, chunk in enumerate(chunks):
         rid = uuid.uuid4().hex[:8]
-        messages = [{"role": "system", "content": f"[rid:{rid}]\n{REWRITE_SYSTEM}"}]
+
+        # 构建包含分析结果的 system prompt
+        system = f"[rid:{rid}]\n{REWRITE_SYSTEM}"
+        if operation:
+            system += f"\n操作类型：{operation}"
+        if tone and tone != "保持原文":
+            system += f"\n目标语气：{tone}"
+        if strategy:
+            system += f"\n改写策略：{strategy}"
+        if key_points:
+            system += f"\n必须保留的要点：{'、'.join(key_points)}"
+
+        messages = [{"role": "system", "content": system}]
+
+        # 根据操作类型注入长度锚点
+        chunk_len = len(chunk)
+        length_hint = ""
+        if "扩写" in operation or "扩写" in header:
+            length_hint = f"\n原文约{chunk_len}字，扩写至约{int(chunk_len*1.5)}-{int(chunk_len*2)}字。"
+        elif "缩写" in operation or "缩写" in header:
+            length_hint = f"\n原文约{chunk_len}字，压缩至约{int(chunk_len*0.3)}-{int(chunk_len*0.5)}字。"
 
         context_hint = f"\n\n前文末尾：{prev_tail}" if prev_tail else ""
         messages.append({
             "role": "user",
-            "content": f"{header}\n\n原文：\n{chunk}{context_hint}",
+            "content": f"{header}{length_hint}\n\n原文：\n{chunk}{context_hint}",
         })
 
         chunk_data = engine.call_llm("executor", messages, ChunkOutput)
@@ -86,9 +109,21 @@ def _segmented_rewrite_handler(engine, step: dict, state: dict) -> dict:
 
 REWRITE_TASK = WorkflowTask()
 REWRITE_TASK.name = "改写"
-REWRITE_TASK.description = "文本改写：分段改写 → 审校"
+REWRITE_TASK.description = "文本改写：分析 → 分段改写 → 审校"
 
 REWRITE_TASK.steps = [
+    StepDef(
+        name="分析",
+        description="分析原文和改写需求",
+        system_prompt="""你是文本分析专家。分析原文内容和用户的改写要求，提取改写所需的关键信息。
+
+要求：
+1. 准确识别操作类型
+2. 提取原文的核心要点（改写时必须保留的内容）
+3. 制定具体的改写策略""",
+        output_model=AnalysisOutput,
+        model_role="executor",
+    ),
     StepDef(
         name="改写",
         description="分段改写",
