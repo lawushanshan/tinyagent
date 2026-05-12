@@ -13,19 +13,48 @@ def _load_config() -> dict:
 
 
 def estimate_tokens(text: str) -> int:
-    """粗略估算 token 数（偏保守，用于上下文窗口保护）。"""
+    """偏保守地估算 token 数（宁可高估）。
+
+    高估是安全的：max_tokens 偏低 → 最多截断后重试（可恢复）
+    低估是危险的：max_tokens 偏高 → context overflow → 服务端直接报错（不可恢复）
+    """
     if not text:
         return 0
     chinese = sum(1 for ch in text if '一' <= ch <= '鿿')
-    return int(chinese * 1.3 + (len(text) - chinese) * 0.4)
+    return int(chinese * 2.0 + (len(text) - chinese) * 0.75)
+
+
+def _resolve_refs(schema: dict, defs: dict) -> dict:
+    """递归内联 $ref 引用，将嵌套模型定义展开到 schema 中。"""
+    if "$ref" in schema:
+        ref_path = schema["$ref"]  # e.g. "#/$defs/SectionItem"
+        ref_name = ref_path.split("/")[-1]
+        resolved = defs.get(ref_name, {})
+        return _resolve_refs({**resolved}, defs)
+    result = {}
+    for k, v in schema.items():
+        if k == "$defs":
+            continue
+        if k == "properties" and isinstance(v, dict):
+            result[k] = {name: _resolve_refs(prop, defs) for name, prop in v.items()}
+        elif k == "items" and isinstance(v, dict):
+            result[k] = _resolve_refs(v, defs)
+        elif isinstance(v, list):
+            result[k] = [_resolve_refs(item, defs) if isinstance(item, dict) else item for item in v]
+        else:
+            result[k] = v
+    return result
 
 
 def _clean_schema(schema: dict) -> dict:
     """清理 Pydantic schema，只保留 llama-server grammar 引擎支持的字段。
 
-    移除 title/description/default 等字段，补充 additionalProperties: false，
-    避免 grammar 编译卡死。
+    1. 先内联 $ref 引用（Pydantic 嵌套模型会产生 $defs/$ref）
+    2. 移除 title/description/default 等字段，补充 additionalProperties: false
     """
+    defs = schema.get("$defs", {})
+    schema = _resolve_refs(schema, defs)
+
     allowed = {"type", "properties", "required", "items", "enum",
                "minimum", "maximum", "additionalProperties", "anyOf", "oneOf",
                "maxLength", "maxItems"}
@@ -87,12 +116,6 @@ class LLMClient:
 
         if max_tokens is not None:
             kwargs["max_tokens"] = max_tokens
-        else:
-            # 根据上下文窗口自动计算 max_tokens
-            prompt_tokens = sum(estimate_tokens(m.get("content", "")) for m in messages)
-            available = self.context_window - prompt_tokens - 64
-            if available > 0:
-                kwargs["max_tokens"] = available
         if format_schema:
             clean_schema = _clean_schema(format_schema)
             kwargs["response_format"] = {

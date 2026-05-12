@@ -82,14 +82,41 @@ class WorkflowEngine:
             llm = self.pool.get(model_role)
 
             try:
-                output_model = step["output_model"]
-                result = reliable_call(
-                    llm=llm,
-                    messages=messages,
-                    output_model=output_model,
-                    max_tokens=step.get("max_tokens"),
-                )
-                step_data = result.model_dump()
+                handler = step.get("handler")
+                if handler:
+                    # 自定义 handler：由步骤自行控制 LLM 调用逻辑（如分段生成）
+                    # 记录 handler 前后的 metrics 偏移，合并为单个 metrics 条目
+                    from .reliable import get_call_metrics_log
+                    metrics_before = len(get_call_metrics_log())
+                    handler_start = time.time()
+
+                    step_data = handler(self, step, state)
+
+                    # 将 handler 内部的多个 metrics 条目合并为一个
+                    from .reliable import _call_metrics_log
+                    handler_entries = _call_metrics_log[metrics_before:]
+                    if handler_entries:
+                        total_attempts = sum(e["attempts"] for e in handler_entries)
+                        total_elapsed = round(time.time() - handler_start, 2)
+                        all_success = all(e["success"] for e in handler_entries)
+                        del _call_metrics_log[metrics_before:]
+                        _call_metrics_log.append({
+                            "attempts": total_attempts,
+                            "attempts_detail": handler_entries,
+                            "total_elapsed": total_elapsed,
+                            "success": all_success,
+                            "final_error": None if all_success else "handler 部分调用失败",
+                        })
+                else:
+                    # 默认：单次 reliable_call
+                    output_model = step["output_model"]
+                    result = reliable_call(
+                        llm=llm,
+                        messages=messages,
+                        output_model=output_model,
+                        max_tokens=step.get("max_tokens"),
+                    )
+                    step_data = result.model_dump()
                 step_outputs[step_name] = step_data
                 state["steps"][step_name] = step_data
 
@@ -126,6 +153,17 @@ class WorkflowEngine:
             with open(checkpoint_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         return None
+
+    def call_llm(self, model_role: str, messages: list[dict], output_model, max_tokens=None):
+        """供 handler 调用的 LLM 接口"""
+        llm = self.pool.get(model_role)
+        result = reliable_call(
+            llm=llm,
+            messages=messages,
+            output_model=output_model,
+            max_tokens=max_tokens,
+        )
+        return result.model_dump()
 
     def _build_messages(self, step: dict, state: dict, step_num: int, total_steps: int) -> list[dict]:
         messages = []

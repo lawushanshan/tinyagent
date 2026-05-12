@@ -1,7 +1,8 @@
-# tasks/writer.py — 文档/邮件编写任务（需求分析→起草→润色）
+# tasks/writer.py — 文档/邮件编写任务（需求分析→大纲→分段起草→润色）
 #
-# 模型分配：executor(快速) 执行分析和起草，reviewer(深度) 做润色评分
+# 模型分配：executor(快速) 执行分析、大纲、分段起草，reviewer(深度) 做润色评分
 
+import uuid
 from typing import Annotated
 from pydantic import BaseModel, Field
 
@@ -16,10 +17,19 @@ class RequirementOutput(BaseModel):
     length_hint: str = Field(description="建议篇幅", max_length=30)
 
 
-class DraftOutput(BaseModel):
-    title: str = Field(description="文档标题")
-    content: str = Field(description="文档正文")
-    word_count: int = Field(description="正文字数")
+class SectionItem(BaseModel):
+    title: str = Field(description="段落标题", max_length=30)
+    key_point: str = Field(description="段落要点", max_length=100)
+
+
+class OutlineOutput(BaseModel):
+    title: str = Field(description="文档标题", max_length=50)
+    sections: Annotated[list[SectionItem], Field(description="段落大纲", max_length=5)] = []
+
+
+class SectionOutput(BaseModel):
+    section_title: str = Field(description="当前段落标题", max_length=30)
+    content: str = Field(description="当前段落正文", max_length=500)
 
 
 class PolishOutput(BaseModel):
@@ -29,9 +39,75 @@ class PolishOutput(BaseModel):
     improvements: Annotated[list[str], Field(description="润色改进说明，没有则为空", max_length=5)] = []
 
 
+def _build_section_messages(section_index: int, total_sections: int,
+                            section: dict, prev_sections: list[dict],
+                            outline: dict, user_input: str) -> list[dict]:
+    """为分段起草构建 messages，包含大纲和前文上下文"""
+    rid = uuid.uuid4().hex[:8]
+    system = f"[rid:{rid}]\n你是专业写手。根据大纲和前文，撰写当前段落的正文。\n\n要求：只输出当前段落的标题和正文，不要输出其他段落的内容。"
+    messages = [{"role": "system", "content": system}]
+
+    # 大纲
+    outline_parts = [f"文档标题：{outline.get('title', '')}"]
+    for i, sec in enumerate(outline.get("sections", [])):
+        marker = " ← 当前" if i == section_index else ""
+        outline_parts.append(f"  {i+1}. {sec.get('title', '')}：{sec.get('key_point', '')}{marker}")
+    messages.append({"role": "user", "content": f"大纲：\n{''.join(outline_parts)}"})
+    messages.append({"role": "assistant", "content": "已了解大纲。"})
+    messages.append({"role": "user", "content": f"用户需求：{user_input}"})
+    messages.append({"role": "assistant", "content": "已了解需求。"})
+
+    # 前文上下文（只传摘要，避免 prompt 过长）
+    if prev_sections:
+        prev_parts = []
+        for sec in prev_sections:
+            title = sec.get("section_title", "")
+            content = sec.get("content", "")
+            tail = content[-150:] if len(content) > 150 else content
+            prev_parts.append(f"【{title}】...{tail}")
+        messages.append({"role": "user", "content": f"前文摘要：\n{''.join(prev_parts)}"})
+        messages.append({"role": "assistant", "content": "已了解前文，保持连贯。"})
+
+    # 当前任务
+    messages.append({
+        "role": "user",
+        "content": f"请撰写第 {section_index + 1}/{total_sections} 段：{section.get('title', '')}\n要点：{section.get('key_point', '')}",
+    })
+    return messages
+
+
+def _segmented_draft_handler(engine, step: dict, state: dict) -> dict:
+    """分段起草 handler：按大纲逐段生成"""
+    outline = state["steps"].get("大纲", {})
+    sections = outline.get("sections", [])
+    user_input = state["input"]
+
+    if not sections:
+        # 无大纲时退化为单次生成
+        messages = engine._build_messages(step, state, 0, 1)
+        return engine.call_llm(step["model_role"], messages, step["output_model"])
+
+    prev_sections = []
+    for i, sec in enumerate(sections):
+        print(f"\n    → [{i+1}/{len(sections)}] {sec.get('title', '')}", end="", flush=True)
+        messages = _build_section_messages(i, len(sections), sec, prev_sections, outline, user_input)
+        section_data = engine.call_llm(step["model_role"], messages, SectionOutput)
+        prev_sections.append(section_data)
+
+    # 合并所有段落
+    merged_content = "\n\n".join(
+        f"【{sec.get('section_title', '')}】\n{sec.get('content', '')}" for sec in prev_sections
+    )
+    return {
+        "title": outline.get("title", ""),
+        "content": merged_content,
+        "word_count": len(merged_content),
+    }
+
+
 WRITER_TASK = WorkflowTask()
 WRITER_TASK.name = "编写"
-WRITER_TASK.description = "文档/邮件编写：需求分析 → 起草 → 润色"
+WRITER_TASK.description = "文档/邮件编写：需求分析 → 大纲 → 分段起草 → 润色"
 
 WRITER_TASK.steps = [
     StepDef(
@@ -42,19 +118,27 @@ WRITER_TASK.steps = [
         model_role="executor",
     ),
     StepDef(
-        name="起草",
-        description="起草文档",
-        system_prompt="""你是专业写手。根据需求分析起草完整文档。
+        name="大纲",
+        description="生成写作大纲",
+        system_prompt="""你是写作规划师。根据需求分析，生成文档大纲。
 
 要求：
-- 必须输出完整的文档内容，包括开头、主体、结尾
-- 邮件类：必须包含称呼、正文、祝语、署名
-- 报告/总结类：必须有标题、分段论述、结论
-- 通知类：必须包含标题、正文、落款和日期
-- 方案类：必须有目标、步骤、预期成果
-- content 字段包含完整排版好的全文，使用换行符分段""",
-        output_model=DraftOutput,
+- 为文档设计一个标题
+- 将内容拆分为 2-5 个段落，每段有明确的标题和要点
+- 邮件类：称呼/正文/祝语/署名
+- 报告/总结类：引言/主体分段/结论
+- 通知类：标题/正文/落款
+- 方案类：目标/步骤/预期成果""",
+        output_model=OutlineOutput,
         model_role="executor",
+    ),
+    StepDef(
+        name="起草",
+        description="分段起草文档",
+        system_prompt="",  # 由 handler 自行构建 messages
+        output_model=SectionOutput,  # 每段输出的模型
+        model_role="executor",
+        handler=_segmented_draft_handler,
     ),
     StepDef(
         name="润色",

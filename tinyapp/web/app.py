@@ -13,8 +13,6 @@ from core.llm import LLMPool
 from core.memory import Memory
 from core.tools import get_definitions, execute as tool_execute
 from core.workflow import WorkflowEngine
-from core.reliable import reliable_call
-from core.chunker import split_text
 from tasks import discover_tasks, get_all_tasks, get_task
 from tasks.languages import get_lang_name, get_lang_code, get_lang_options
 
@@ -117,10 +115,6 @@ def create_app():
         if not task:
             return jsonify({"error": f"未找到任务: {task_name}"}), 404
 
-        # 判断是否需要分段改写
-        original_text = _extract_original_text(user_input)
-        need_chunk = (task_name == "改写" and len(original_text) > 4000)
-
         event_queue = queue.Queue()
         step_timers: dict[int, float] = {}
 
@@ -141,41 +135,38 @@ def create_app():
 
         def run_workflow():
             try:
-                if need_chunk:
-                    _run_chunked_rewrite(user_input, original_text, fast_mode, emit_step, event_queue, pool)
-                else:
-                    steps = [s.to_dict() for s in task.steps]
-                    if fast_mode:
-                        steps = steps[:-1]
+                steps = [s.to_dict() for s in task.steps]
+                if fast_mode:
+                    steps = steps[:-1]
 
-                    def on_step(step_num, total, step_name, step_desc, status, step_data):
-                        emit_step(step_num, total, step_name, step_desc, status)
+                def on_step(step_num, total, step_name, step_desc, status, step_data):
+                    emit_step(step_num, total, step_name, step_desc, status)
 
-                    result = engine.run(
-                        task_name=task_name,
-                        steps=steps,
-                        user_input=user_input,
-                        on_step=on_step,
-                    )
+                result = engine.run(
+                    task_name=task_name,
+                    steps=steps,
+                    user_input=user_input,
+                    on_step=on_step,
+                )
 
-                    # 改写任务：从改写步骤取正文，审校步骤取评分
-                    final_output = result.final_output
-                    if task_name == "改写" and result.success:
-                        rewrite_data = result.step_outputs.get("改写", {})
-                        review_data = result.step_outputs.get("审校", {})
-                        final_output = {
-                            "content": rewrite_data.get("content", ""),
-                            "quality_score": review_data.get("quality_score", 0),
-                            "issues": review_data.get("issues", []),
-                        }
+                # 改写任务：从改写步骤取正文，审校步骤取评分
+                final_output = result.final_output
+                if task_name == "改写" and result.success:
+                    rewrite_data = result.step_outputs.get("改写", {})
+                    review_data = result.step_outputs.get("审校", {})
+                    final_output = {
+                        "content": rewrite_data.get("content", ""),
+                        "quality_score": review_data.get("quality_score", 0),
+                        "issues": review_data.get("issues", []),
+                    }
 
-                    event_queue.put({
-                        "type": "result",
-                        "success": result.success,
-                        "error": result.error,
-                        "final_output": _safe_serialize(final_output),
-                        "step_outputs": _safe_serialize(result.step_outputs),
-                    })
+                event_queue.put({
+                    "type": "result",
+                    "success": result.success,
+                    "error": result.error,
+                    "final_output": _safe_serialize(final_output),
+                    "step_outputs": _safe_serialize(result.step_outputs),
+                })
             except Exception as e:
                 event_queue.put({"type": "error", "message": str(e)})
             finally:
@@ -291,135 +282,6 @@ def _build_system_prompt(memory: Memory) -> str:
 
 {memory.get_context()}"""
     return prompt
-
-
-def _extract_original_text(user_input: str) -> str:
-    """从改写任务的 user_input 中提取原文部分。"""
-    marker = "\n\n原文：\n"
-    idx = user_input.find(marker)
-    return user_input[idx + len(marker):] if idx >= 0 else user_input
-
-
-def _build_rewrite_header(user_input: str) -> str:
-    """从改写任务的 user_input 中提取操作类型/语气等头部信息。"""
-    marker = "\n\n原文：\n"
-    idx = user_input.find(marker)
-    return user_input[:idx] if idx >= 0 else ""
-
-
-def _run_chunked_rewrite(user_input, original_text, fast_mode, emit_step, event_queue, pool):
-    """分段改写长文本：逐段改写 → 合并 → 审校。"""
-    from tasks.rewrite import RewriteOutput, ReviewOutput
-
-    chunks = split_text(original_text, max_chars=3500)
-    total_steps = len(chunks) + (0 if fast_mode else 1)
-    header = _build_rewrite_header(user_input)
-    executor = pool.get("executor")
-
-    rewrite_system = "你是专业文字编辑。根据用户要求的操作类型对文本进行改写。\n\n操作类型说明：\n- 扩写：补充细节和论述，丰富内容，保持原意\n- 缩写：精简压缩，保留核心要点，去除冗余\n- 改写：换种表达方式重写，可调整语气\n- 纠错：修正语法、拼写、标点、用词错误\n- 续写：基于原文内容和风格继续往下写\n\n必须输出完整的改写后文本。"
-
-    rewritten_parts = []
-    prev_tail = ""
-
-    for i, chunk in enumerate(chunks):
-        step_num = i + 1
-        step_desc = f"改写第 {i+1}/{len(chunks)} 部分"
-        emit_step(step_num, total_steps, "改写", step_desc, "start")
-
-        context_hint = f"\n\n前文末尾：{prev_tail}" if prev_tail else ""
-        messages = [
-            {"role": "system", "content": rewrite_system},
-            {"role": "user", "content": f"{header}\n\n原文：\n{chunk}{context_hint}"},
-        ]
-
-        try:
-            result = reliable_call(llm=executor, messages=messages, output_model=RewriteOutput)
-            rewritten_parts.append(result.content)
-            prev_tail = result.content[-200:] if len(result.content) > 200 else result.content
-            emit_step(step_num, total_steps, "改写", step_desc, "done")
-        except Exception as e:
-            emit_step(step_num, total_steps, "改写", step_desc, "error")
-            raise
-
-    merged = "\n".join(rewritten_parts)
-
-    if fast_mode:
-        event_queue.put({
-            "type": "result",
-            "success": True,
-            "error": None,
-            "final_output": {"content": merged, "word_count": len(merged), "changes": []},
-            "step_outputs": {},
-        })
-        return
-
-    # 审校步骤
-    review_step = total_steps
-    emit_step(review_step, total_steps, "审校", "审校评分 [深度思考]", "start")
-
-    reviewer = pool.get("reviewer")
-    review_system = "你是资深文字审校专家。审查改写后的文本质量，逐项检查：\n1. 是否准确完成了用户要求的操作\n2. 语句是否通顺自然，逻辑是否连贯\n3. 与原文的关系是否合理\n\n只需给出质量评分和发现的问题，不需要输出完整文本。"
-
-    # 检查合并文本是否超出审校模型上下文窗口
-    review_ctx = pool.get_context_window("reviewer")
-    review_text, sampled = _build_review_text(merged, rewritten_parts, review_ctx)
-    review_content = f"{header}\n\n改写后文本：\n{review_text}"
-    if sampled:
-        review_content += "\n\n（注：文本较长，以上为采样片段，请据此评估整体质量）"
-
-    review_messages = [
-        {"role": "system", "content": review_system},
-        {"role": "user", "content": review_content},
-    ]
-
-    try:
-        review_result = reliable_call(llm=reviewer, messages=review_messages, output_model=ReviewOutput)
-        emit_step(review_step, total_steps, "审校", "审校评分 [深度思考]", "done")
-
-        final_output = {
-            "content": merged,
-            "quality_score": review_result.quality_score,
-            "issues": review_result.issues,
-        }
-        event_queue.put({
-            "type": "result",
-            "success": True,
-            "error": None,
-            "final_output": _safe_serialize(final_output),
-            "step_outputs": {"审校": _safe_serialize(final_output)},
-        })
-    except Exception as e:
-        emit_step(review_step, total_steps, "审校", "审校评分 [深度思考]", "error")
-        # 审校失败时返回合并后的改写结果
-        event_queue.put({
-            "type": "result",
-            "success": True,
-            "error": f"审校步骤失败: {e}",
-            "final_output": {"content": merged, "quality_score": 0, "issues": [str(e)]},
-            "step_outputs": {},
-        })
-
-
-def _build_review_text(merged: str, parts: list[str], max_ctx: int) -> tuple[str, bool]:
-    """构建审校文本，超长时采样代表性片段。返回 (文本, 是否采样)。"""
-    from core.llm import estimate_tokens
-
-    estimated = estimate_tokens(merged)
-    if estimated + 500 < max_ctx:
-        return merged, False
-
-    # 采样：首段、末段、中间均匀取 1-2 段
-    if len(parts) <= 2:
-        return "\n\n".join(parts), True
-
-    samples = [parts[0]]
-    mid = len(parts) // 2
-    if mid > 0:
-        samples.append(parts[mid])
-    if len(parts) > 2:
-        samples.append(parts[-1])
-
-    return "\n\n...（省略）...\n\n".join(samples), True
 
 
 def _parse_docx(file_storage):

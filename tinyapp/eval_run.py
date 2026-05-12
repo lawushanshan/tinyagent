@@ -2,6 +2,7 @@
 
 import sys
 import os
+import time
 import argparse
 from datetime import datetime
 
@@ -57,6 +58,8 @@ def main():
     # 逐条执行
     results = []
     for i, case in enumerate(all_cases, 1):
+        if i > 1:
+            time.sleep(2)
         desc = case.get("description", case["id"])
         print(f"\n  [{i}/{len(all_cases)}] {desc}...")
         result = runner.run_single(case)

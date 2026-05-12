@@ -1,12 +1,14 @@
-# tasks/rewrite.py — 文本改写任务（改写 → 审校）
+# tasks/rewrite.py — 文本改写任务（分段改写 → 审校）
 #
 # 支持：扩写、缩写、改写/调语气、纠错、续写
 # 模型分配：executor(快速) 执行改写，reviewer(深度) 做审校
 
+import uuid
 from typing import Annotated
 from pydantic import BaseModel, Field
 
 from .base import WorkflowTask, StepDef
+from core.chunker import split_text
 
 
 class RewriteOutput(BaseModel):
@@ -15,31 +17,85 @@ class RewriteOutput(BaseModel):
     changes: Annotated[list[str], Field(description="主要改动说明", max_length=3)] = []
 
 
+class ChunkOutput(BaseModel):
+    content: str = Field(description="改写后的当前片段文本")
+
+
 class ReviewOutput(BaseModel):
     quality_score: int = Field(description="质量评分1-5", ge=1, le=5)
     issues: Annotated[list[str], Field(description="发现的问题，没有则为空", max_length=5)] = []
 
 
-REWRITE_TASK = WorkflowTask()
-REWRITE_TASK.name = "改写"
-REWRITE_TASK.description = "文本改写：改写 → 审校"
+def _extract_original_text(user_input: str) -> str:
+    marker = "\n\n原文：\n"
+    idx = user_input.find(marker)
+    return user_input[idx + len(marker):] if idx >= 0 else user_input
 
-REWRITE_TASK.steps = [
-    StepDef(
-        name="改写",
-        description="执行改写",
-        system_prompt="""你是专业文字编辑。根据用户要求的操作类型对文本进行改写。
+
+def _extract_rewrite_header(user_input: str) -> str:
+    marker = "\n\n原文：\n"
+    idx = user_input.find(marker)
+    return user_input[:idx] if idx >= 0 else ""
+
+
+REWRITE_SYSTEM = """你是专业文字编辑。根据用户要求的操作类型对文本进行改写。
 
 操作类型说明：
 - 扩写：补充细节和论述，丰富内容，保持原意
 - 缩写：精简压缩，保留核心要点，去除冗余
-- 改写：换种表达方式重写，可调整语气（正式/亲切/简洁/幽默等），或用于降重
-- 纠错：修正语法、拼写、标点、用词错误，保持原文风格
-- 续写：基于原文内容和风格继续往下写，自然衔接
+- 改写：换种表达方式重写，可调整语气
+- 纠错：修正语法、拼写、标点、用词错误
+- 续写：基于原文内容和风格继续往下写
 
-必须输出完整的改写后文本。""",
-        output_model=RewriteOutput,
+只输出当前片段改写后的文本，不要输出其他内容。"""
+
+
+def _segmented_rewrite_handler(engine, step: dict, state: dict) -> dict:
+    """分段改写 handler：按片段逐段改写，保持上下文连贯"""
+    user_input = state["input"]
+    original_text = _extract_original_text(user_input)
+    header = _extract_rewrite_header(user_input)
+
+    chunks = split_text(original_text, max_chars=1500)
+    rewritten_parts = []
+    prev_tail = ""
+
+    for i, chunk in enumerate(chunks):
+        rid = uuid.uuid4().hex[:8]
+        messages = [{"role": "system", "content": f"[rid:{rid}]\n{REWRITE_SYSTEM}"}]
+
+        context_hint = f"\n\n前文末尾：{prev_tail}" if prev_tail else ""
+        messages.append({
+            "role": "user",
+            "content": f"{header}\n\n原文：\n{chunk}{context_hint}",
+        })
+
+        chunk_data = engine.call_llm("executor", messages, ChunkOutput)
+        rewritten = chunk_data.get("content", "")
+        rewritten_parts.append(rewritten)
+        prev_tail = rewritten[-200:] if len(rewritten) > 200 else rewritten
+        print(f"\n    → [{i+1}/{len(chunks)}] 已改写", end="", flush=True)
+
+    merged = "\n".join(rewritten_parts)
+    return {
+        "content": merged,
+        "word_count": len(merged),
+        "changes": [],
+    }
+
+
+REWRITE_TASK = WorkflowTask()
+REWRITE_TASK.name = "改写"
+REWRITE_TASK.description = "文本改写：分段改写 → 审校"
+
+REWRITE_TASK.steps = [
+    StepDef(
+        name="改写",
+        description="分段改写",
+        system_prompt="",  # 由 handler 自行构建 messages
+        output_model=ChunkOutput,
         model_role="executor",
+        handler=_segmented_rewrite_handler,
     ),
     StepDef(
         name="审校",

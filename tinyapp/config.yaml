@@ -13,17 +13,17 @@ llm:
   executor:
     base_url: "http://127.0.0.1:8080/v1"
     model: "qwen2.5-3b"
-    timeout: 300
+    timeout: 600
     temperature: 0
-    context_window: 8192
+    context_window: 4096
     # no_think: true          # 禁用思考模式（Qwen3.5 等支持 /no_think 的模型）
   # 评分模型（慢，带思考）— 用于校对、评分、审查等需要深度推理的步骤
   reviewer:
     base_url: "http://127.0.0.1:8080/v1"
     model: "gemma-4-e2b"
-    timeout: 180
+    timeout: 600
     temperature: 0
-    context_window: 16384
+    context_window: 4096
 
 # 可靠性设置
 reliability:
