@@ -9,9 +9,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from datetime import datetime
 
-from core.llm import LLMPool
-from core.workflow import WorkflowEngine
-from core.reliable import get_call_metrics_log, reset_call_metrics_log
+from tinyagent.llm import LLMPool
+from tinyagent.workflow import WorkflowEngine
+from tinyagent.reliable import get_call_metrics_log, reset_call_metrics_log
 from tasks import discover_tasks, get_task
 from .metrics import StepMetrics, CaseResult, EvalRunConfig
 
@@ -20,7 +20,7 @@ class EvalRunner:
     """评测运行器：批量执行 workflow 任务并收集指标"""
 
     def __init__(self, pool: LLMPool = None, config: EvalRunConfig = None):
-        self.pool = pool or LLMPool()
+        self.pool = pool or LLMPool.from_config_file(os.path.join(os.path.dirname(__file__), "..", "config.yaml"))
         self.engine = WorkflowEngine(self.pool)
         self.config = config or EvalRunConfig()
         discover_tasks()

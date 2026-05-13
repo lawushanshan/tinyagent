@@ -1,4 +1,4 @@
-# core/chunker.py — 长文本分段工具
+# chunker.py — 长文本分段工具
 
 
 def split_text(text: str, max_chars: int = 3500) -> list[str]:

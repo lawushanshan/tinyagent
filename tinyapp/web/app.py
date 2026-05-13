@@ -9,10 +9,10 @@ from datetime import datetime
 
 from flask import Flask, render_template, request, jsonify, Response, session
 
-from core.llm import LLMPool
-from core.memory import Memory
-from core.tools import get_definitions, execute as tool_execute
-from core.workflow import WorkflowEngine
+from tinyagent.llm import LLMPool
+from tinyagent.memory import Memory
+from tinyagent.tools import get_definitions, execute as tool_execute
+from tinyagent.workflow import WorkflowEngine
 from tasks import discover_tasks, get_all_tasks, get_task
 from tasks.languages import get_lang_name, get_lang_code, get_lang_options
 
@@ -22,7 +22,7 @@ def create_app():
     app.secret_key = "tinyapp-secret-key"
     app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10MB
 
-    pool = LLMPool()
+    pool = LLMPool.from_config_file(os.path.join(os.path.dirname(__file__), "..", "config.yaml"))
     engine = WorkflowEngine(pool)
     memory = Memory()
 

@@ -1,15 +1,9 @@
-# core/llm.py — LLM 客户端（支持多模型 / LLMPool）
+# llm.py — LLM 客户端（支持多模型 / LLMPool）
 
 from openai import OpenAI
 from typing import Optional
 import yaml
 import os
-
-
-def _load_config() -> dict:
-    config_path = os.path.join(os.path.dirname(__file__), "..", "config.yaml")
-    with open(config_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
 
 
 def estimate_tokens(text: str) -> int:
@@ -167,13 +161,12 @@ class LLMClient:
 class LLMPool:
     """多模型池，管理 executor / reviewer 等多个 LLM 客户端"""
 
-    def __init__(self):
-        config = _load_config()["llm"]
+    def __init__(self, llm_config: dict):
         self._clients: dict[str, LLMClient] = {}
         self._roles: dict[str, str] = {}
         self._context_windows: dict[str, int] = {}
 
-        for role, cfg in config.items():
+        for role, cfg in llm_config.items():
             ctx = cfg.get("context_window", 4096)
             self._clients[role] = LLMClient(
                 base_url=cfg["base_url"],
@@ -184,6 +177,13 @@ class LLMPool:
             )
             self._roles[role] = cfg["model"]
             self._context_windows[role] = ctx
+
+    @classmethod
+    def from_config_file(cls, path: str) -> "LLMPool":
+        """从 YAML 配置文件创建 LLMPool"""
+        with open(path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        return cls(llm_config=config["llm"])
 
     def get(self, role: str = "executor") -> LLMClient:
         """按角色获取 LLM 客户端"""

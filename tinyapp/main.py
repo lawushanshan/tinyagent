@@ -5,8 +5,8 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from core.llm import LLMPool
-from core.workflow import WorkflowEngine
+from tinyagent.llm import LLMPool
+from tinyagent.workflow import WorkflowEngine
 from tasks import discover_tasks, get_all_tasks
 from tasks.chat import create_chat_task
 from tools.file_tools import tool_list_files, tool_read_file, tool_write_file
@@ -62,7 +62,7 @@ def run_chat_task(task):
 
 
 def main():
-    pool = LLMPool()
+    pool = LLMPool.from_config_file(os.path.join(os.path.dirname(__file__), "config.yaml"))
     engine = WorkflowEngine(pool)
 
     print_banner(pool)

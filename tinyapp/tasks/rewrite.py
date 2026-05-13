@@ -8,7 +8,7 @@ from typing import Annotated
 from pydantic import BaseModel, Field
 
 from .base import WorkflowTask, StepDef
-from core.chunker import split_text
+from tinyagent.chunker import split_text
 
 
 class AnalysisOutput(BaseModel):

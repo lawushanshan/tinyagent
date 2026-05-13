@@ -29,7 +29,7 @@
                  │                    │
                  ▼                    ▼
 ┌──────────────────────────────────────────────────────────────┐
-│                       引擎层 (core/)                          │
+│                   引擎层 (src/tinyagent/)                     │
 │                                                               │
 │  ┌──────────────────┐    ┌──────────────┐                    │
 │  │ WorkflowEngine   │    │ Agent Loop   │                    │
@@ -200,12 +200,14 @@ llama-server --config models.ini --port 8080
 
 可在 `models.ini` 中调整模型路径和参数，在 `config.yaml` 中按角色配置。
 
-### 2. 创建虚拟环境并安装依赖
+### 2. 安装核心框架 + 应用依赖
 
 ```bash
+# 安装 tinyagent 核心框架（可编辑模式）
+pip install -e .
+
+# 安装应用层依赖
 cd tinyapp
-python3 -m venv venv
-source venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -297,22 +299,26 @@ python main.py
 ## 项目结构
 
 ```
-tinyapp/
-├── config.yaml              # 应用配置（模型角色、可靠性参数等）
-├── requirements.txt         # Python 依赖
-├── main.py                  # CLI 入口
-├── gui.py                   # Web GUI 入口（双击启动）
-├── eval_run.py              # 评测 CLI 入口
+tinyagent/                          ← Git 仓库根目录
+├── pyproject.toml                  # 核心框架打包配置（pip install -e .）
+├── src/
+│   └── tinyagent/                  # ── 核心框架包 ──
+│       ├── __init__.py             #   公共 API 导出
+│       ├── llm.py                  #   LLMClient + LLMPool（OpenAI 兼容，按角色分发）
+│       ├── reliable.py             #   三层可靠性栈（grammar → Pydantic → 重试）
+│       ├── workflow.py             #   WorkflowEngine（步骤执行 + State + Checkpoint）
+│       ├── tools.py                #   工具注册系统（装饰器模式）
+│       ├── memory.py               #   持久化记忆（JSON 文件存储）
+│       └── chunker.py              #   长文本分段工具
 │
-├── core/                    # ── 引擎层 ──
-│   ├── llm.py               #   LLMClient + LLMPool（OpenAI 兼容，按角色分发）
-│   ├── reliable.py          #   三层可靠性栈（grammar → Pydantic → 重试）
-│   ├── workflow.py          #   WorkflowEngine（步骤执行 + State + Checkpoint）
-│   ├── tools.py             #   工具注册系统（装饰器模式）
-│   ├── memory.py            #   持久化记忆（JSON 文件存储）
-│   └── chunker.py           #   长文本分段工具
-│
-├── tasks/                   # ── 任务层（自动发现）──
+└── tinyapp/                        # ── 应用层 ──
+    ├── config.yaml                 #   应用配置（模型角色、可靠性参数等）
+    ├── requirements.txt            #   应用额外依赖（flask 等）
+    ├── main.py                     #   CLI 入口
+    ├── gui.py                      #   Web GUI 入口（双击启动）
+    ├── eval_run.py                 #   评测 CLI 入口
+    │
+    ├── tasks/                      # ── 任务层（自动发现）──
 │   ├── __init__.py          #   任务自动发现 + 注册
 │   ├── base.py              #   WorkflowTask + StepDef 基类
 │   ├── translate.py         #   翻译任务（翻译 → 校对）
@@ -350,7 +356,7 @@ tinyapp/
 ```
                      ┌──────────────┐
                      │  LLMPool     │
-                     │  (llm.py)    │
+                     │(tinyagent/)  │
                      │              │
                      │ get(role) → LLMClient
                      └──────┬───────┘
@@ -358,7 +364,7 @@ tinyapp/
                             ▼
 ┌──────────────┐    ┌───────────────┐    ┌─────────────────┐
 │ WorkflowTask │───▶│WorkflowEngine │───▶│ reliable_call() │
-│  (base.py)   │    │ (workflow.py) │    │  (reliable.py)  │
+│  (base.py)   │    │ (tinyagent/)  │    │  (tinyagent/)   │
 │              │    │               │    │                 │
 │ · name       │    │ · run()       │    │ · grammar 约束  │
 │ · steps[]    │    │ · call_llm()  │    │ · Pydantic 校验 │
@@ -470,7 +476,7 @@ MY_TASK.steps = [
 在 `tools/` 下使用 `@register` 装饰器注册，chat agent 自动可用：
 
 ```python
-from core.tools import register
+from tinyagent.tools import register
 
 @register(
     name="my_tool",

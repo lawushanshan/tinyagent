@@ -1,6 +1,4 @@
-# core/tools.py — 工具注册系统
-#
-# 复用 lessons/08 的注册模式，提供统一的工具管理。
+# tools.py — 工具注册系统
 
 _registry: dict[str, dict] = {}
 

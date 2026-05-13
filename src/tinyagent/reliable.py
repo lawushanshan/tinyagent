@@ -1,4 +1,4 @@
-# core/reliable.py — 三层可靠性栈
+# reliable.py — 三层可靠性栈
 #
 # 借鉴 instructor + Ollama Structured Outputs 的核心理念：
 #   1. 约束解码（Ollama format）→ token 层面保证 JSON 合法

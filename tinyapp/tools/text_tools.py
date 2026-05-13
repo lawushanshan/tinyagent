@@ -1,6 +1,6 @@
 # tools/text_tools.py — 文本处理工具
 
-from core.tools import register
+from tinyagent.tools import register
 
 
 @register(

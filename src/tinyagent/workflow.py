@@ -1,4 +1,4 @@
-# core/workflow.py — Workflow 引擎（支持多模型）
+# workflow.py — Workflow 引擎（支持多模型）
 #
 # 借鉴 LangGraph StateGraph：步骤间 State 传递 + Checkpoint
 # 借鉴 Microsoft Agent Framework：Workflow 与 Agent 定义分离

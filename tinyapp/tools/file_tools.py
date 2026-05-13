@@ -2,7 +2,7 @@
 
 import os
 
-from core.tools import register
+from tinyagent.tools import register
 
 
 @register(

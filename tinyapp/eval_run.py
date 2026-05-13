@@ -8,7 +8,7 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from core.llm import LLMPool
+from tinyagent.llm import LLMPool
 from eval.runner import EvalRunner
 from eval.report import compute_summary, print_report, save_report, save_markdown_report
 from eval.metrics import EvalRunConfig, EvalReport
@@ -29,7 +29,7 @@ def main():
         max_cases=args.max_cases,
     )
 
-    pool = LLMPool()
+    pool = LLMPool.from_config_file(os.path.join(os.path.dirname(__file__), "config.yaml"))
     runner = EvalRunner(pool=pool, config=config)
 
     # 加载用例

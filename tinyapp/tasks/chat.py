@@ -9,9 +9,9 @@ import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from core.llm import LLMPool
-from core.memory import Memory
-from core.tools import get_definitions, execute as tool_execute
+from tinyagent.llm import LLMPool
+from tinyagent.memory import Memory
+from tinyagent.tools import get_definitions, execute as tool_execute
 
 
 class ChatTask:

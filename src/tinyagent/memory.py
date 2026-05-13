@@ -1,4 +1,4 @@
-# core/memory.py — 持久化记忆系统
+# memory.py — 持久化记忆系统
 
 import json
 import os
