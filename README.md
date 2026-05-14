@@ -309,7 +309,8 @@ tinyagent/                          ← Git 仓库根目录
 │       ├── workflow.py             #   WorkflowEngine（步骤执行 + State + Checkpoint）
 │       ├── tools.py                #   工具注册系统（装饰器模式）
 │       ├── memory.py               #   持久化记忆（JSON 文件存储）
-│       └── chunker.py              #   长文本分段工具
+│       ├── chunker.py              #   长文本分段工具
+│       └── trace.py                #   执行追踪（记录每次运行的 LLM 调用详情）
 │
 └── tinyapp/                        # ── 应用层 ──
     ├── config.yaml                 #   应用配置（模型角色、可靠性参数等）
@@ -348,6 +349,7 @@ tinyagent/                          ← Git 仓库根目录
 └── data/                    # ── 运行时数据 ──
     ├── memory.json          #   持久化记忆存储
     ├── checkpoints/         #   Workflow checkpoint 文件
+    ├── traces/              #   执行追踪文件（每次运行自动生成）
     └── eval_results/        #   评测报告输出
 ```
 
@@ -500,6 +502,105 @@ def tool_my_tool(arg1: str) -> dict:
 | `/api/chat` | POST | 聊天对话 |
 | `/api/chat/reset` | POST | 重置聊天会话 |
 | `/api/parse-file` | POST | 解析上传文件（txt/docx/pdf）|
+
+## 执行追踪（Trace）
+
+每次 workflow 运行会自动在 `data/traces/` 目录生成一个 JSON 追踪文件，记录完整的 LLM 调用过程，无需额外配置。
+
+### 查看追踪
+
+```bash
+# 查看所有追踪文件
+ls data/traces/
+
+# 查看某次运行的完整追踪
+cat data/traces/20260514_230100.json | python -m json.tool
+```
+
+### 追踪文件结构
+
+```json
+{
+  "run_id": "20260514_230100",
+  "task": "翻译",
+  "input": "请将以下文本翻译为中文：Hello World",
+  "start_time": "2026-05-14T23:01:01",
+  "steps": [
+    {
+      "step": "翻译",
+      "model_role": "translator",
+      "model": "hy-mt1.5-1.8b",
+      "calls": [
+        {
+          "messages": [
+            {"role": "system", "content": "[rid:a1b2c3d4] 你是专业翻译..."},
+            {"role": "user", "content": "请将以下文本翻译为中文：Hello World"}
+          ],
+          "attempts": [
+            {
+              "attempt": 1,
+              "elapsed_s": 2.3,
+              "raw_output": "{\"translated_text\": \"你好世界\"}"
+            }
+          ],
+          "output": {"translated_text": "你好世界"},
+          "total_elapsed_s": 2.3
+        }
+      ],
+      "total_elapsed_s": 2.3
+    }
+  ],
+  "total_elapsed_s": 15.2
+}
+```
+
+### 数据层级
+
+| 层级 | 字段 | 说明 |
+|------|------|------|
+| **Run** | `run_id` | 运行唯一标识（时间戳） |
+| | `task` | 任务名称 |
+| | `input` | 用户输入 |
+| | `total_elapsed_s` | 总耗时 |
+| **Step** | `step` | 步骤名称 |
+| | `model_role` / `model` | 使用的模型角色和模型 ID |
+| | `calls` | 该步骤的所有 LLM 调用（handler 步骤可能有多次） |
+| **Call** | `messages` | 发送给模型的完整消息列表 |
+| | `attempts` | 每次尝试的记录 |
+| | `output` | 结构化输出（Pydantic model dump） |
+| **Attempt** | `raw_output` | 模型原始返回（截断至 5000 字符） |
+| | `error` | 验证失败原因（如果有） |
+| | `elapsed_s` | 该次尝试耗时 |
+
+### 典型用途
+
+**排查重试问题** — 查看 `attempts` 中哪些步骤触发了重试、原始输出是什么、错误原因：
+
+```bash
+# 筛选有重试的步骤
+cat data/traces/20260514_230100.json | python -c "
+import json, sys
+data = json.load(sys.stdin)
+for step in data['steps']:
+    for call in step['calls']:
+        n = len(call['attempts'])
+        if n > 1:
+            print(f\"{step['step']}: {n} 次尝试\")
+            for a in call['attempts']:
+                err = a.get('error', 'OK')
+                print(f\"  #{a['attempt']} {a['elapsed_s']}s - {err[:80]}\")
+"
+```
+
+**对比 prompt 效果** — 查看 `messages` 中实际发给模型的完整内容，调试 system prompt 和上下文构建。
+
+**分析耗时** — 按 step/call/attempt 三个粒度查看时间分布，定位瓶颈。
+
+**自定义 trace 目录** — 通过 `WorkflowEngine` 构造参数指定：
+
+```python
+engine = WorkflowEngine(pool, trace_dir="/path/to/my/traces")
+```
 
 ## 评测工具
 

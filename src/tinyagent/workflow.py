@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from .llm import LLMPool
 from .reliable import reliable_call
+from .trace import RunTrace
 
 
 class WorkflowResult:
@@ -39,10 +40,12 @@ class WorkflowEngine:
         reviewer  → 思考模型（评分、校对、审查）
     """
 
-    def __init__(self, pool: LLMPool, checkpoint_dir: str = None):
+    def __init__(self, pool: LLMPool, checkpoint_dir: str = None, trace_dir: str = None):
         self.pool = pool
         self.checkpoint_dir = checkpoint_dir or "data/checkpoints"
+        self.trace_dir = trace_dir or "data/traces"
         os.makedirs(self.checkpoint_dir, exist_ok=True)
+        self._trace: RunTrace | None = None
 
     def run(
         self,
@@ -60,6 +63,8 @@ class WorkflowEngine:
             }
 
         total_steps = len(steps)
+        trace = RunTrace(task_name, user_input, trace_dir=self.trace_dir)
+        self._trace = trace
         step_outputs = {}
 
         for i, step in enumerate(steps):
@@ -80,6 +85,7 @@ class WorkflowEngine:
             messages = self._build_messages(step, state, step_num, total_steps)
 
             llm = self.pool.get(model_role)
+            trace.begin_step(step_name, model_role, llm.model)
 
             try:
                 handler = step.get("handler")
@@ -115,10 +121,13 @@ class WorkflowEngine:
                         messages=messages,
                         output_model=output_model,
                         max_tokens=step.get("max_tokens"),
+                        trace=self._trace,
                     )
                     step_data = result.model_dump()
                 step_outputs[step_name] = step_data
                 state["steps"][step_name] = step_data
+
+                trace.end_step()
 
                 if on_step:
                     on_step(step_num, total_steps, step_name, step_desc, "done", step_data)
@@ -127,6 +136,8 @@ class WorkflowEngine:
                     print(" ✓")
 
             except Exception as e:
+                trace.end_step()
+                trace.save()
                 if on_step:
                     on_step(step_num, total_steps, step_name, step_desc, "error", {"error": str(e)})
                 else:
@@ -140,6 +151,7 @@ class WorkflowEngine:
 
         final_output = self._extract_final_result(steps, step_outputs)
         self._clear_checkpoint(task_name)
+        trace.save()
 
         return WorkflowResult(
             final_output=final_output,
@@ -162,6 +174,7 @@ class WorkflowEngine:
             messages=messages,
             output_model=output_model,
             max_tokens=max_tokens,
+            trace=self._trace,
         )
         return result.model_dump()
 
