@@ -159,6 +159,15 @@ def create_app():
                         "quality_score": review_data.get("quality_score", 0),
                         "issues": review_data.get("issues", []),
                     }
+                elif task_name == "编写" and result.success:
+                    polish_data = result.step_outputs.get("润色", {})
+                    check_data = result.step_outputs.get("质检", {})
+                    final_output = {
+                        "final_title": polish_data.get("final_title", ""),
+                        "final_content": polish_data.get("final_content", ""),
+                        "quality_score": check_data.get("quality_score", 0),
+                        "issues": check_data.get("issues", []),
+                    }
 
                 event_queue.put({
                     "type": "result",

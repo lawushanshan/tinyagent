@@ -28,9 +28,11 @@ def reliable_call(
     llm: LLMClient,
     messages: list[dict],
     output_model: Type[BaseModel],
-    max_retries: int = 3,
+    max_retries: int = 2,
     temperature: float = 0,
     max_tokens: int = None,
+    frequency_penalty: float = 0.3,
+    presence_penalty: float = 0.3,
 ) -> BaseModel:
     schema = output_model.model_json_schema()
 
@@ -53,6 +55,8 @@ def reliable_call(
             format_schema=schema,
             temperature=temperature,
             max_tokens=max_tokens,
+            frequency_penalty=frequency_penalty,
+            presence_penalty=presence_penalty,
         )
         elapsed = time.time() - t0
         content = response["content"]
@@ -81,6 +85,18 @@ def reliable_call(
 
         try:
             result = output_model.model_validate_json(content)
+
+            # 检查文本字段是否存在重复退化
+            rep_issue = _check_repetition(result)
+            if rep_issue:
+                last_error = rep_issue
+                call_metrics["attempts_detail"].append({"attempt": attempt + 1, "elapsed": round(elapsed, 2), "success": False, "error": last_error[:200]})
+                print(f" ({elapsed:.1f}s, 重复退化)", end="", flush=True)
+                if attempt < max_retries - 1:
+                    _append_retry_feedback(messages, content, last_error)
+                    time.sleep(1 * (attempt + 1))
+                continue
+
             total_elapsed = time.time() - total_start
             retry_info = f", 重试 {attempt} 次" if attempt > 0 else ""
             print(f" ({elapsed:.1f}s{retry_info})", end="", flush=True)
@@ -109,7 +125,7 @@ def reliable_call(
 def reliable_call_json(
     llm: LLMClient,
     messages: list[dict],
-    max_retries: int = 3,
+    max_retries: int = 2,
     temperature: float = 0,
 ) -> dict:
     """
@@ -122,6 +138,8 @@ def reliable_call_json(
             messages=messages,
             format_schema=schema,
             temperature=temperature,
+            frequency_penalty=0.3,
+            presence_penalty=0.3,
         )
         content = response["content"]
         if content.strip():
@@ -192,3 +210,44 @@ def _strip_thinking(text: str) -> str:
     # 清理残留空行
     text = re.sub(r'\n{3,}', '\n\n', text).strip()
     return text
+
+
+def _check_repetition(result: BaseModel) -> str | None:
+    """检查模型输出中的文本字段是否存在重复退化。
+
+    检测逻辑：将文本按句号/感叹号/问号分句，如果同一个连续片段（4+ 字符）
+    在文本中出现 3 次以上，则判定为重复退化。
+    """
+    for field_name in ("content", "final_content", "translated_text", "final_text",
+                        "section_title", "title", "draft", "text"):
+        val = getattr(result, field_name, None)
+        if not isinstance(val, str) or len(val) < 10:
+            continue
+
+        # 按标点分句，检查连续重复片段
+        sentences = re.split(r'[。！？.!?\n]', val)
+        sentences = [s.strip() for s in sentences if len(s.strip()) >= 4]
+
+        # 检查是否有连续 3+ 个相同句子
+        for i in range(len(sentences)):
+            count = 1
+            for j in range(i + 1, min(i + 5, len(sentences))):
+                if sentences[j] == sentences[i]:
+                    count += 1
+                else:
+                    break
+            if count >= 3:
+                return f"输出重复退化：\"{sentences[i][:20]}...\" 连续重复 {count} 次。请避免重复，每次输出新内容。"
+
+        # 检查是否有短片段在整个文本中重复过多
+        if len(val) > 100:
+            chunk_len = min(8, len(val) // 4)
+            for start in range(0, len(val) - chunk_len, chunk_len):
+                chunk = val[start:start + chunk_len]
+                if len(chunk) < 4:
+                    continue
+                occurrences = val.count(chunk)
+                if occurrences >= 4:
+                    return f"输出重复退化：\"{chunk}\" 在文本中出现 {occurrences} 次。请避免重复，用不同方式表达。"
+
+    return None

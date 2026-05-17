@@ -175,14 +175,31 @@ class WorkflowEngine:
         system += f"\n\n当前是第 {step_num}/{total_steps} 步。"
         messages.append({"role": "system", "content": system})
 
-        # 前序步骤上下文（摘要）
+        # 前序步骤上下文
         completed_steps = state.get("steps", {})
         if completed_steps:
+            # 检查是否有大文本字段需要传递完整内容
+            full_text = None
+            for name, data in completed_steps.items():
+                if isinstance(data, dict):
+                    for key in ("final_content", "content", "translated_text", "final_text"):
+                        val = data.get(key, "")
+                        if isinstance(val, str) and len(val) > 300:
+                            full_text = val
+                            break
+                if full_text:
+                    break
+
             context_parts = ["前序步骤结果："]
             for name, data in completed_steps.items():
                 context_parts.append(f"- {name}: {_summarize(data)}")
             messages.append({"role": "user", "content": "\n".join(context_parts)})
             messages.append({"role": "assistant", "content": "已了解，继续执行。"})
+
+            # 对需要审阅完整内容的步骤（如质检），单独传递完整文本
+            if full_text:
+                messages.append({"role": "user", "content": f"以下是待审阅的完整文档：\n{full_text}"})
+                messages.append({"role": "assistant", "content": "已接收完整文档，开始审阅。"})
 
         messages.append({"role": "user", "content": state["input"]})
         return messages

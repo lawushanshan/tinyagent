@@ -1,6 +1,6 @@
-# tasks/writer.py — 文档/邮件编写任务（需求分析→大纲→分段起草→润色）
+# tasks/writer.py — 文档/邮件编写任务（需求分析→大纲→分段起草→润色→质检）
 #
-# 模型分配：executor(快速) 执行分析、大纲、分段起草，reviewer(深度) 做润色评分
+# 模型分配：executor(快速) 执行分析、大纲、起草、润色，reviewer(深度) 做质检评分
 
 import uuid
 from typing import Annotated
@@ -19,7 +19,7 @@ class RequirementOutput(BaseModel):
 
 class SectionItem(BaseModel):
     title: str = Field(description="段落标题", max_length=30)
-    key_point: str = Field(description="段落要点", max_length=100)
+    key_point: str = Field(description="段落要点", max_length=200)
 
 
 class OutlineOutput(BaseModel):
@@ -29,49 +29,45 @@ class OutlineOutput(BaseModel):
 
 class SectionOutput(BaseModel):
     section_title: str = Field(description="当前段落标题", max_length=30)
-    content: str = Field(description="当前段落正文", max_length=500)
+    content: str = Field(description="当前段落正文", max_length=1500)
+
+
+class SectionPolishOutput(BaseModel):
+    section_title: str = Field(description="段落标题", max_length=30)
+    content: str = Field(description="润色后的段落正文", max_length=1500)
+    changes: str = Field(description="本段主要改动说明", max_length=100)
+
+
+class TitlePolishOutput(BaseModel):
+    final_title: str = Field(description="最终标题", max_length=100)
 
 
 class PolishOutput(BaseModel):
     final_title: str = Field(description="最终标题", max_length=100)
     final_content: str = Field(description="最终正文")
-    quality_score: int = Field(description="质量评分1-5", ge=1, le=5)
     improvements: Annotated[list[str], Field(description="润色改进说明，没有则为空", max_length=5)] = []
+
+
+class QualityCheckOutput(BaseModel):
+    quality_score: int = Field(description="质量评分1-5", ge=1, le=5)
+    issues: Annotated[list[str], Field(description="发现的问题，没有则为空", max_length=5)] = []
 
 
 def _build_section_messages(section_index: int, total_sections: int,
                             section: dict, prev_sections: list[dict],
                             outline: dict, user_input: str) -> list[dict]:
-    """为分段起草构建 messages，包含大纲和前文上下文"""
+    """为分段起草构建 messages，只传当前段所需信息，减少对 3B 模型的干扰"""
     rid = uuid.uuid4().hex[:8]
-    system = f"[rid:{rid}]\n你是专业写手。根据大纲和前文，撰写当前段落的正文。\n\n要求：只输出当前段落的标题和正文，不要输出其他段落的内容。"
+    system = f"[rid:{rid}]\n你是专业写手。根据给定的主题和要求，撰写当前段落。"
     messages = [{"role": "system", "content": system}]
 
-    # 大纲
-    outline_parts = [f"文档标题：{outline.get('title', '')}"]
-    for i, sec in enumerate(outline.get("sections", [])):
-        marker = " ← 当前" if i == section_index else ""
-        outline_parts.append(f"  {i+1}. {sec.get('title', '')}：{sec.get('key_point', '')}{marker}")
-    messages.append({"role": "user", "content": f"大纲：\n{''.join(outline_parts)}"})
-    messages.append({"role": "assistant", "content": "已了解大纲。"})
-    messages.append({"role": "user", "content": f"用户需求：{user_input}"})
-    messages.append({"role": "assistant", "content": "已了解需求。"})
-
-    # 前文上下文（只传摘要，避免 prompt 过长）
-    if prev_sections:
-        prev_parts = []
-        for sec in prev_sections:
-            title = sec.get("section_title", "")
-            content = sec.get("content", "")
-            tail = content[-150:] if len(content) > 150 else content
-            prev_parts.append(f"【{title}】...{tail}")
-        messages.append({"role": "user", "content": f"前文摘要：\n{''.join(prev_parts)}"})
-        messages.append({"role": "assistant", "content": "已了解前文，保持连贯。"})
-
-    # 当前任务
+    # 只传当前段的信息，不传大纲全文和前文
     messages.append({
         "role": "user",
-        "content": f"请撰写第 {section_index + 1}/{total_sections} 段：{section.get('title', '')}\n要点：{section.get('key_point', '')}",
+        "content": f"文档主题：{outline.get('title', '')}\n"
+                   f"用户需求：{user_input}\n\n"
+                   f"请撰写第 {section_index + 1}/{total_sections} 段：{section.get('title', '')}\n"
+                   f"要点：{section.get('key_point', '')}",
     })
     return messages
 
@@ -83,7 +79,6 @@ def _segmented_draft_handler(engine, step: dict, state: dict) -> dict:
     user_input = state["input"]
 
     if not sections:
-        # 无大纲时退化为单次生成
         messages = engine._build_messages(step, state, 0, 1)
         return engine.call_llm(step["model_role"], messages, step["output_model"])
 
@@ -91,10 +86,9 @@ def _segmented_draft_handler(engine, step: dict, state: dict) -> dict:
     for i, sec in enumerate(sections):
         print(f"\n    → [{i+1}/{len(sections)}] {sec.get('title', '')}", end="", flush=True)
         messages = _build_section_messages(i, len(sections), sec, prev_sections, outline, user_input)
-        section_data = engine.call_llm(step["model_role"], messages, SectionOutput)
+        section_data = engine.call_llm(step["model_role"], messages, SectionOutput, max_tokens=800)
         prev_sections.append(section_data)
 
-    # 合并所有段落
     merged_content = "\n\n".join(
         f"【{sec.get('section_title', '')}】\n{sec.get('content', '')}" for sec in prev_sections
     )
@@ -102,12 +96,62 @@ def _segmented_draft_handler(engine, step: dict, state: dict) -> dict:
         "title": outline.get("title", ""),
         "content": merged_content,
         "word_count": len(merged_content),
+        "sections": prev_sections,
+    }
+
+
+def _segmented_polish_handler(engine, step: dict, state: dict) -> dict:
+    """分段润色 handler：逐段润色 + 标题优化"""
+    draft = state["steps"].get("起草", {})
+    sections = draft.get("sections", [])
+    outline = state["steps"].get("大纲", {})
+    user_input = state["input"]
+
+    if not sections:
+        messages = engine._build_messages(step, state, 0, 1)
+        return engine.call_llm(step["model_role"], messages, PolishOutput)
+
+    rid = uuid.uuid4().hex[:8]
+    improvements = []
+    polished_sections = []
+
+    for i, sec in enumerate(sections):
+        print(f"\n    → [{i+1}/{len(sections)}] 润色: {sec.get('section_title', '')}", end="", flush=True)
+        system = f"[rid:{rid}]\n你是资深文字编辑。对当前段落进行润色优化。\n\n要求：只润色当前段落，检查语法用词、逻辑通顺、语气一致，去除重复冗余。"
+        messages = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": f"文档主题：{outline.get('title', '')}\n用户需求：{user_input}"},
+            {"role": "assistant", "content": "已了解。"},
+            {"role": "user", "content": f"请润色第 {i+1}/{len(sections)} 段：\n【{sec.get('section_title', '')}】\n{sec.get('content', '')}"},
+        ]
+        result = engine.call_llm(step["model_role"], messages, SectionPolishOutput, max_tokens=800)
+        polished_sections.append(result)
+        if result.get("changes"):
+            improvements.append(f"段落{i+1}：{result['changes']}")
+
+    # 标题优化（单独调用，很短）
+    print(f"\n    → 优化标题", end="", flush=True)
+    system = f"[rid:{rid}]\n你是标题优化专家。根据文档内容，优化标题使其更准确、简洁。"
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": f"原标题：{outline.get('title', '')}\n段落标题：{', '.join(s.get('section_title', '') for s in sections)}\n用户需求：{user_input}"},
+    ]
+    title_result = engine.call_llm(step["model_role"], messages, TitlePolishOutput, max_tokens=100)
+
+    merged = "\n\n".join(
+        f"【{sec.get('section_title', '')}】\n{sec.get('content', '')}" for sec in polished_sections
+    )
+
+    return {
+        "final_title": title_result.get("final_title", ""),
+        "final_content": merged,
+        "improvements": improvements,
     }
 
 
 WRITER_TASK = WorkflowTask()
 WRITER_TASK.name = "编写"
-WRITER_TASK.description = "文档/邮件编写：需求分析 → 大纲 → 分段起草 → 润色"
+WRITER_TASK.description = "文档/邮件编写：需求分析 → 大纲 → 分段起草 → 润色 → 质检"
 
 WRITER_TASK.steps = [
     StepDef(
@@ -135,22 +179,32 @@ WRITER_TASK.steps = [
     StepDef(
         name="起草",
         description="分段起草文档",
-        system_prompt="",  # 由 handler 自行构建 messages
-        output_model=SectionOutput,  # 每段输出的模型
+        system_prompt="",
+        output_model=SectionOutput,
         model_role="executor",
         handler=_segmented_draft_handler,
     ),
     StepDef(
         name="润色",
-        description="润色评分 [深度思考]",
-        system_prompt="""你是资深文字编辑。仔细审查文档质量，逐项检查：
-1. 语法和用词是否正确
-2. 结构是否清晰，逻辑是否通顺
-3. 语气风格是否一致
-4. 是否遗漏了关键要点
+        description="分段润色优化",
+        system_prompt="",
+        output_model=SectionPolishOutput,
+        model_role="executor",
+        handler=_segmented_polish_handler,
+    ),
+    StepDef(
+        name="质检",
+        description="质检评分 [深度思考]",
+        system_prompt="""你是独立的质量审查专家。对文档进行客观评分。
 
-给出最终定稿、质量评分和改进说明。""",
-        output_model=PolishOutput,
+逐项检查：
+1. 是否有重复冗余（同一句话反复出现）
+2. 语法和用词是否正确
+3. 逻辑是否通顺连贯
+4. 是否完成了用户的写作需求
+
+只给出质量评分和发现的问题，不需要输出完整文本。""",
+        output_model=QualityCheckOutput,
         model_role="reviewer",
     ),
 ]
@@ -171,9 +225,11 @@ def format_result(result) -> str:
         return f"[错误] {result.error}"
 
     polish = result.step_outputs.get("润色", {})
+    check = result.step_outputs.get("质检", {})
     title = polish.get("final_title", "")
     content = polish.get("final_content", "")
-    score = polish.get("quality_score", "?")
+    score = check.get("quality_score", "?")
+    issues = check.get("issues", [])
     improvements = polish.get("improvements", [])
 
     output = f"\n{'='*50}\n  {title}\n{'='*50}\n\n{content}\n"
@@ -182,6 +238,11 @@ def format_result(result) -> str:
         output += f"\n润色说明：\n"
         for imp in improvements:
             output += f"  - {imp}\n"
+
+    if issues:
+        output += f"\n发现问题：\n"
+        for issue in issues:
+            output += f"  ! {issue}\n"
 
     output += f"\n质量评分：{'★' * score}{'☆' * (5 - score)} ({score}/5)\n{'='*50}"
     return output

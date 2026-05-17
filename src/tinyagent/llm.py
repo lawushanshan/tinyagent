@@ -96,6 +96,8 @@ class LLMClient:
         format_schema: dict = None,
         temperature: float = 0,
         max_tokens: int = None,
+        frequency_penalty: float = 0,
+        presence_penalty: float = 0,
     ) -> dict:
         # 如果 no_think 模式，在 system 消息前插入 /no_think 指令
         if self.no_think:
@@ -106,6 +108,8 @@ class LLMClient:
             "messages": messages,
             "temperature": temperature,
             "stream": False,
+            "frequency_penalty": frequency_penalty,
+            "presence_penalty": presence_penalty,
         }
 
         if max_tokens is not None:
