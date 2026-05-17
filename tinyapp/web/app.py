@@ -160,11 +160,12 @@ def create_app():
                         "issues": review_data.get("issues", []),
                     }
                 elif task_name == "编写" and result.success:
-                    polish_data = result.step_outputs.get("润色", {})
+                    outline_data = result.step_outputs.get("规划", {})
+                    draft_data = result.step_outputs.get("起草", {})
                     check_data = result.step_outputs.get("质检", {})
                     final_output = {
-                        "final_title": polish_data.get("final_title", ""),
-                        "final_content": polish_data.get("final_content", ""),
+                        "final_title": outline_data.get("title", ""),
+                        "final_content": draft_data.get("content", ""),
                         "quality_score": check_data.get("quality_score", 0),
                         "issues": check_data.get("issues", []),
                     }

@@ -10,3 +10,4 @@ venv/
 .env
 skills-lock.json
 .agents/skills/
+tinyapp/data/traces/

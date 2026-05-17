@@ -230,16 +230,23 @@ def _strip_thinking(text: str) -> str:
 def _check_repetition(result: BaseModel) -> str | None:
     """检查模型输出中的文本字段是否存在重复退化。
 
-    检测逻辑：将文本按句号/感叹号/问号分句，如果同一个连续片段（4+ 字符）
-    在文本中出现 3 次以上，则判定为重复退化。
+    三层检测：
+    1. 功能性字符连续重复（的了是在永远不应连续出现）
+    2. 2-3字中文词连续重复（系统系统、问题问题、表示表示）
+    3. 句子级重复（连续 3+ 个相同句子，或短片段全局高频出现）
     """
     for field_name in ("content", "final_content", "translated_text", "final_text",
-                        "section_title", "title", "draft", "text"):
+                        "section_title", "title", "draft", "text", "key_point"):
         val = getattr(result, field_name, None)
         if not isinstance(val, str) or len(val) < 10:
             continue
 
-        # 按标点分句，检查连续重复片段
+        # 1. 2-3字中文词连续重复（系统系统、问题问题、表示表示）
+        m = re.search(r'([一-鿿]{2,3})\1', val)
+        if m:
+            return f"输出重复退化：\"{m.group()}\" 连续重复。请避免重复表达。"
+
+        # 3. 按标点分句，检查连续重复片段
         sentences = re.split(r'[。！？.!?\n]', val)
         sentences = [s.strip() for s in sentences if len(s.strip()) >= 4]
 
@@ -264,5 +271,21 @@ def _check_repetition(result: BaseModel) -> str | None:
                 occurrences = val.count(chunk)
                 if occurrences >= 4:
                     return f"输出重复退化：\"{chunk}\" 在文本中出现 {occurrences} 次。请避免重复，用不同方式表达。"
+
+    # 检查嵌套的 list 字段中的文本（如 sections 中的 key_point）
+    for list_field in ("sections", "items", "steps"):
+        items = getattr(result, list_field, None)
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            if not hasattr(item, '__dict__'):
+                continue
+            for attr in ("key_point", "content", "title", "text", "description"):
+                val = getattr(item, attr, None)
+                if not isinstance(val, str) or len(val) < 10:
+                    continue
+                m = re.search(r'([一-鿿]{2,3})\1', val)
+                if m:
+                    return f"输出重复退化：\"{m.group()}\" 连续重复。请避免重复表达。"
 
     return None
