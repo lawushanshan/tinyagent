@@ -6,3 +6,4 @@ from .workflow import WorkflowEngine, WorkflowResult
 from .tools import register, get_definitions, get_names, execute
 from .memory import Memory
 from .chunker import split_text
+from .trace import RunTrace
